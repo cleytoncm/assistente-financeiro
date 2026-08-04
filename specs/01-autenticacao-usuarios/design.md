@@ -4,8 +4,10 @@
 
 ```
 User
-  id, name, email (UNIQUE), password_hash, created_at
+  id, name, email (UNIQUE, lowercase), password_hash, created_at
 ```
+
+`email` é sempre normalizado para lowercase antes de gravar ou consultar (registro e login).
 
 Nenhuma tabela de sessão no MVP (ver decisão de token abaixo). Todas as tabelas das fases
 seguintes (Account, Card, ...) mantêm `user_id (FK User)` como já previsto no design de
@@ -20,6 +22,7 @@ corpo da requisição.
 
 ## Senha
 - Hash com `bcrypt` (custo 10-12), nunca armazenar em texto puro
+- Mínimo de 8 caracteres, validado no `POST /auth/register`
 - Sem política de complexidade forçada no MVP (não solicitado)
 
 ## API
@@ -29,6 +32,12 @@ POST /auth/register    { name, email, password } -> 201
 POST /auth/login       { email, password } -> { token }
 GET  /auth/me          (autenticado) -> { id, name, email }
 ```
+
+## Rate limiting (RF-06)
+`POST /auth/register` e `POST /auth/login` aplicam limite de tentativas por IP+e-mail (ex.:
+5 tentativas / 15 min), retornando 429 acima do limite. Middleware leve em memória no MVP
+(ex.: equivalente a `express-rate-limit`) — sem necessidade de Redis dado o volume de uso
+pessoal; revisitar se o backend escalar para múltiplas instâncias simultâneas.
 
 ## Regra de isolamento (RF-04) — helper centralizado
 Toda query de dados de outras fases deve passar por um helper único, ex.:
@@ -49,6 +58,15 @@ centralizado no helper para que essa mudança não exija tocar em todos os endpo
 ## Integração com o bot (Telegram) — decisão adiada para a fase do bot
 O bot precisa mapear um `chat_id` do Telegram para um `user_id` do sistema (ex.: comando
 `/vincular <código>` gerado no painel web). Detalhar no design da fase "Bot conversacional".
+
+## Frontend (React + Vite + TypeScript)
+- SPA separada do backend, consumindo a API REST via `fetch`/`axios`
+- Token guardado em `localStorage` após login/cadastro; um client HTTP central injeta o
+  header `Authorization: Bearer <token>` em toda chamada autenticada
+- Um interceptor trata resposta 401 globalmente: limpa o `localStorage` e redireciona para
+  `/login`
+- Páginas desta fase: `/login`, `/cadastro`; demais rotas do painel exigem token (guarda de
+  rota simples checando presença do token antes de renderizar)
 
 ## Impacto no deploy GCP
 Substitui a solução temporária de "chave de API fixa" descrita antes na constitution.md —

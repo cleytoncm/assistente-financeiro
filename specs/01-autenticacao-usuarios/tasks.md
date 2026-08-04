@@ -18,3 +18,15 @@ todas as tabelas seguintes dependem de `user_id` vindo de um usuário real auten
       (requisito: RF-05)
 - [ ] T07 — Testes automatizados (registro, login, acesso negado sem token, isolamento entre
       dois usuários distintos)
+- [ ] T08 — Rate limiting em POST /auth/register e POST /auth/login (429 acima do limite)
+      (requisito: RF-06)
+- [ ] T09 — Setup do projeto front (React + Vite + TypeScript)
+      (requisito: base para as tasks de frontend abaixo)
+- [ ] T10 — Client HTTP central (injeta Authorization, trata 401 globalmente)
+      (requisito: base de frontend desta e das próximas fases)
+- [ ] T11 — Tela de cadastro (React) consumindo POST /auth/register
+      (requisito: RF-01)
+- [ ] T12 — Tela de login (React) consumindo POST /auth/login, salva token em localStorage
+      (requisito: RF-02)
+- [ ] T13 — Guarda de rota autenticada no front (redireciona para /login sem token/em 401)
+      (requisito: RF-03)

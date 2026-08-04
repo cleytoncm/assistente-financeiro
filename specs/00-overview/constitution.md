@@ -14,7 +14,8 @@ Uso via bot conversacional (lançamentos rápidos) e painel web (visão consolid
 - Contas a pagar/receber
 - Metas financeiras e acompanhamento de investimentos/patrimônio
 - Entrada de dados manual **e** por importação de arquivo (OFX, CSV, PDF de fatura)
-- Interfaces: bot conversacional + painel web
+- Interfaces: bot conversacional + painel web (painel web construído incrementalmente junto
+  com cada fase, não como fase isolada — ver Roadmap de fases)
 - Múltiplos usuários com login, cada um vendo apenas seus próprios dados
 - (fase futura) Subusuários: um usuário principal pode conceder a outros usuários
   visualização (somente leitura) dos seus dados
@@ -24,7 +25,10 @@ Uso via bot conversacional (lançamentos rápidos) e painel web (visão consolid
 |---|---|---|
 | Stack | Node.js + TypeScript | Confirmado pelo usuário |
 | Canal do bot | Telegram | Assumido (sem resposta) — reavaliar |
-| Banco de dados | MySQL | Assumido (sem resposta) — reavaliar |
+| Banco de dados | PostgreSQL | Confirmado pelo usuário |
+| ORM | Prisma | Confirmado pelo usuário |
+| Frontend | React + Vite + TypeScript, SPA consumindo a API REST | Confirmado pelo usuário |
+| Autenticação no front | Token JWT em `localStorage`, enviado manualmente no header `Authorization` | Confirmado pelo usuário |
 | Hospedagem | GCP (Cloud Run + Cloud SQL) | Confirmado pelo usuário |
 | Usuários | Multi-usuário com login, dados isolados; subusuários (view-only) planejado para fase futura | Confirmado pelo usuário |
 | Formatos de importação | OFX, CSV, PDF de fatura | Confirmado pelo usuário |
@@ -36,8 +40,8 @@ não bloqueiam o início do trabalho de modelagem, mas podem afetar design de fa
 ## Infraestrutura de deploy (GCP)
 - **Compute**: Cloud Run para o backend Node.js/TypeScript (contêiner) — serverless, escala a
   zero, paga por uso (adequado para uso pessoal)
-- **Banco de dados**: Cloud SQL para MySQL — mantém a escolha de MySQL, agora gerenciado;
-  conexão via Cloud SQL Auth Proxy/conector, não host/porta direto
+- **Banco de dados**: Cloud SQL para PostgreSQL — gerenciado pelo GCP; conexão via Cloud SQL
+  Auth Proxy/conector, não host/porta direto
 - **Segredos**: Secret Manager (token do bot, credenciais de banco) — nunca em `.env` versionado
 - **Imagens**: Artifact Registry
 - **CI/CD**: a definir (Cloud Build ou GitHub Actions) — não bloqueia a Fase 1
@@ -58,16 +62,26 @@ Nenhuma implementação começa sem `requirements.md` e `design.md` aprovados pe
 `tasks.md` é atualizado conforme o trabalho avança (marcar concluído, não reescrever histórico).
 
 ## Roadmap de fases
+Não existe uma fase isolada de "painel web": o front (React + Vite + TypeScript) é construído
+incrementalmente dentro de cada fase, junto com o backend correspondente — cada fase entrega
+API **e** as telas que a usam. O bot conversacional (Telegram) continua como interface própria,
+à parte do painel web.
+
 1. **Autenticação e Usuários** — cadastro, login, token, isolamento de dados por usuário
+   (+ telas de login/cadastro)
 2. **Contas e Cartões** — modelo de dados base (contas, cartões, vínculo opcional)
+   (+ telas de listagem/cadastro de contas, cartões e bancos)
 3. **Lançamentos manuais** — receitas/despesas, saldo por conta/cartão
+   (+ tela de lançamento e extrato)
 4. **Cartão de crédito e faturas** — parcelamento, fechamento/vencimento, conta pagadora
-5. **Contas a pagar/receber**
+   (+ tela de fatura)
+5. **Contas a pagar/receber** (+ tela correspondente)
 6. **Importação de arquivos** — OFX e CSV primeiro, PDF de fatura depois
-7. **Bot conversacional** — lançar, consultar saldo, enviar arquivo para importar
-8. **Painel web** — dashboards, orçamento por categoria, metas, patrimônio
-9. **Subusuários (visualização compartilhada)** — usuário principal concede acesso somente
-   leitura a outro usuário aos seus dados
+   (+ tela de upload e revisão de importação)
+7. **Bot conversacional** — lançar, consultar saldo, enviar arquivo para importar (interface
+   própria via Telegram, não é tela do painel web)
+8. **Subusuários (visualização compartilhada)** — usuário principal concede acesso somente
+   leitura a outro usuário aos seus dados (+ tela de gestão de acesso concedido)
 
 ## Não-objetivos (por ora)
 - Recuperação de senha, verificação de e-mail, login social (fase de Autenticação cobre só

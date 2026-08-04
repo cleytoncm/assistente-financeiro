@@ -10,9 +10,12 @@ conta bancária ou um cartão de crédito. Sem isso, nenhuma outra feature pode 
 ### RF-01 — Cadastrar conta bancária
 Como usuário, quero cadastrar uma conta bancária para associar lançamentos e saldo a ela.
 - Critérios de aceite:
-  - Dado que informo nome, banco e saldo inicial, uma conta é criada com esse saldo
+  - Dado que informo nome, banco (selecionado do catálogo de bancos — ver RF-06), moeda e
+    saldo inicial, uma conta é criada com esse saldo
   - Nome da conta é obrigatório e único por usuário
   - Saldo inicial pode ser zero ou negativo (ex.: conta já no cheque especial)
+  - Moeda é opcional na criação, com padrão `BRL`; aceita outros códigos ISO 4217 (ex.: `USD`)
+    para contas em moeda estrangeira (ex.: conta dólar de Inter/Mercado Pago)
 
 ### RF-02 — Cadastrar cartão de crédito
 Como usuário, quero cadastrar um cartão de crédito, podendo vinculá-lo a uma conta bancária
@@ -40,13 +43,41 @@ Como usuário, quero remover uma conta ou cartão que não uso mais.
 Como usuário, quero ver todas as minhas contas e cartões, incluindo qual cartão está vinculado
 a qual conta (se algum).
 
+### RF-06 — Catálogo de bancos
+Como usuário, quero escolher o banco de uma conta a partir de uma lista com nome e código
+oficial (Bacen/COMPE), e poder cadastrar um banco que não esteja na lista.
+- Critérios de aceite:
+  - O catálogo já vem populado via seed com os principais bancos brasileiros (nome + código)
+  - O catálogo é compartilhado entre todos os usuários (não é dado pessoal — não tem
+    `user_id`, não é afetado pelo isolamento do RF-04 da Fase 1)
+  - Qualquer usuário autenticado pode cadastrar um banco novo (nome + código) quando o dele
+    não estiver na lista
+  - Código do banco é único no catálogo
+
 ## Fora de escopo desta feature
 - Cálculo de saldo por lançamentos (Fase 3)
 - Fatura, parcelamento, pagamento (Fase 4)
 - Visualização compartilhada por subusuários (Fase 9 — futura; esta fase só modela o dono
   único de cada conta/cartão via `user_id`)
+- Moeda no cartão (`Card`) — por ora só a conta bancária tem moeda; se surgir cartão faturado
+  em moeda estrangeira, é um campo novo a adicionar quando isso existir
+- Conversão de câmbio / consolidação de patrimônio entre moedas — fica para a fase de
+  patrimônio (Fase 8), esta fase só grava a moeda de cada conta
 
-## Perguntas abertas
-- Confirmar: cartão pode ter mais de um "responsável pelo pagamento" configurável por fatura,
-  ou o vínculo cadastrado aqui é sempre a conta pagadora padrão? (assumido: vínculo é o padrão,
-  mas pode ser sobrescrito por fatura na Fase 4)
+## Decisões confirmadas
+- O vínculo `linked_account_id` do cartão é apenas a conta pagadora **padrão**. Na Fase 4
+  (fatura), o usuário pode escolher pagar uma fatura específica com outra conta, sem alterar
+  o vínculo cadastrado do cartão. Cartão sem vínculo continua exigindo escolha manual da conta
+  pagadora em toda fatura (RF-02).
+
+## Frontend desta fase (painel web)
+Construído junto com o backend desta fase (não é fase isolada — ver roadmap na
+`constitution.md`). Todas as páginas exigem login (guarda de rota da Fase 1).
+- Tela de listagem de contas e cartões (RF-05), mostrando qual cartão está vinculado a qual
+  conta
+- Formulário de criar/editar conta (RF-01, RF-03): nome, banco (selecionado do catálogo —
+  RF-06, com opção de cadastrar um banco novo), moeda (padrão BRL), saldo inicial
+- Formulário de criar/editar cartão (RF-02, RF-03): nome, limite, dia de fechamento, dia de
+  vencimento, vínculo opcional com conta existente
+- Ação de remover conta/cartão (RF-04), com mensagem de bloqueio se houver lançamentos
+  associados (a partir da Fase 3)

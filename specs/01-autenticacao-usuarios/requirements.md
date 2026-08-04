@@ -11,8 +11,10 @@ em diante), pois todo dado passa a pertencer a um usuário autenticado, não mai
 ### RF-01 — Cadastro de usuário
 Como visitante, quero criar uma conta com nome, e-mail e senha.
 - Critérios de aceite:
-  - E-mail é único no sistema
+  - E-mail é único no sistema, normalizado para lowercase antes de salvar e antes de comparar
+    (login e verificação de unicidade) — evita duplicidade por diferença de maiúsculas/minúsculas
   - Senha é armazenada com hash (nunca em texto puro)
+  - Senha exige mínimo de 8 caracteres (sem exigir complexidade — maiúscula/número/símbolo)
   - Após cadastro, o usuário pode fazer login imediatamente
 
 ### RF-02 — Login
@@ -40,13 +42,29 @@ visíveis para outro usuário.
 ### RF-05 — Consultar dados do próprio usuário
 Como usuário autenticado, quero consultar meu nome e e-mail (`GET /auth/me`).
 
+### RF-06 — Limitar tentativas de login
+Como sistema, quero limitar tentativas de login para dificultar ataques de força bruta.
+- Critérios de aceite:
+  - `POST /auth/login` (e `POST /auth/register`) aplica rate limiting por IP/e-mail (ex.: 5
+    tentativas por 15 minutos)
+  - Acima do limite, a requisição retorna 429, sem revelar detalhes sobre a conta-alvo
+
 ## Fora de escopo desta feature (fase futura)
 - **Subusuários**: um usuário principal poder cadastrar subusuários que visualizam (somente
   leitura) seus dados. Fica para uma fase própria, mas o design desta feature deve evitar
   decisões que impeçam essa extensão depois (ver design.md — nota de extensibilidade).
 - Recuperação de senha, verificação de e-mail, login social — não solicitados ainda.
 
-## Perguntas abertas
-- Formato do token: JWT stateless (mais simples, sem tabela de sessão) ou token opaco com
-  tabela de sessões (permite revogar login remotamente)? Recomendação: JWT stateless para o
-  MVP, dado uso pessoal; revisitar se revogação de sessão se tornar necessária.
+## Decisões confirmadas
+- Formato do token: **JWT stateless** (sem tabela de sessão), dado uso pessoal — sem suporte a
+  revogação remota de login no MVP; revisitar se isso se tornar necessário.
+
+## Frontend desta fase (painel web)
+Construído junto com o backend desta fase (não é fase isolada — ver roadmap na
+`constitution.md`).
+- Tela de cadastro (RF-01): formulário nome/e-mail/senha, chama `POST /auth/register`
+- Tela de login (RF-02): formulário e-mail/senha, chama `POST /auth/login`, guarda o token
+  recebido em `localStorage`
+- Guarda de rota autenticada: páginas que exigem login redirecionam para a tela de login se
+  não houver token em `localStorage`, ou se uma chamada à API retornar 401 (token
+  ausente/expirado)
