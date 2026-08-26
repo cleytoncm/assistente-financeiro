@@ -38,6 +38,9 @@ Como usuário, quero remover uma conta ou cartão que não uso mais.
   - Se existirem lançamentos associados (Fase 3+), a remoção é bloqueada ou exige confirmação
     explícita — decisão de design será detalhada quando a Fase 3 existir; por ora, remoção só
     é permitida para conta/cartão sem nenhum lançamento
+  - **Atualizado na Fase 3** (`specs/03-lancamentos-manuais/requirements.md`, RF-08/RF-09):
+    conta/cartão sem lançamentos continua removida direto como aqui; com lançamentos, o usuário
+    passa a poder escolher entre desativar, ocultar ou excluir em cascata
 
 ### RF-05 — Listar contas e cartões
 Como usuário, quero ver todas as minhas contas e cartões, incluindo qual cartão está vinculado
@@ -56,13 +59,14 @@ oficial (Bacen/COMPE), e poder cadastrar um banco que não esteja na lista.
 
 ## Fora de escopo desta feature
 - Cálculo de saldo por lançamentos (Fase 3)
-- Fatura, parcelamento, pagamento (Fase 4)
-- Visualização compartilhada por subusuários (Fase 9 — futura; esta fase só modela o dono
+- Parcelamento simples no cartão (Fase 3); fechamento/vencimento de fatura e pagamento (Fase 4)
+- Visualização compartilhada por subusuários (Fase 8 — futura; esta fase só modela o dono
   único de cada conta/cartão via `user_id`)
 - Moeda no cartão (`Card`) — por ora só a conta bancária tem moeda; se surgir cartão faturado
   em moeda estrangeira, é um campo novo a adicionar quando isso existir
-- Conversão de câmbio / consolidação de patrimônio entre moedas — fica para a fase de
-  patrimônio (Fase 8), esta fase só grava a moeda de cada conta
+- Conversão de câmbio / consolidação de patrimônio entre moedas — metas financeiras e
+  patrimônio fazem parte da visão do produto (`constitution.md`), mas ainda não têm fase
+  própria no roadmap atual; esta fase só grava a moeda de cada conta
 
 ## Decisões confirmadas
 - O vínculo `linked_account_id` do cartão é apenas a conta pagadora **padrão**. Na Fase 4

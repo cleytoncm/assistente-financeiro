@@ -11,7 +11,7 @@ com suporte planejado a subusuários com visualização compartilhada.
 - Metas financeiras e acompanhamento de patrimônio/investimentos
 - Lançamento manual **e** importação de extratos/faturas (OFX, CSV, PDF)
 - Uso via bot conversacional (Telegram) e painel web
-- Deploy na GCP (Cloud Run + Cloud SQL para MySQL)
+- Deploy na GCP (Cloud Run + Cloud SQL para PostgreSQL)
 
 ## Status
 Em planejamento — ainda não há código de implementação. O desenvolvimento é guiado por

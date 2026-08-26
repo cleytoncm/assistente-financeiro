@@ -61,6 +61,36 @@ Cada feature vive em `specs/<numero>-<nome>/` com três documentos:
 Nenhuma implementação começa sem `requirements.md` e `design.md` aprovados pelo usuário.
 `tasks.md` é atualizado conforme o trabalho avança (marcar concluído, não reescrever histórico).
 
+## Estratégia de Testes
+Toda funcionalidade desenvolvida — backend e frontend — precisa de teste automatizado
+correspondente. Cada task de feature nos `tasks.md` de cada fase já inclui seu teste embutido
+(não existe mais uma task genérica de "testes" separada ao final): uma task não é considerada
+concluída sem o teste que a acompanha.
+
+### Ferramental
+- **Backend**: Vitest. Testes de API/integração rodam contra um PostgreSQL de teste real (via
+  Docker, resetado entre execuções), exercitando o Prisma de verdade — não mocka o banco, já
+  que boa parte das regras do sistema vive em constraints (`UNIQUE`, `FK`, `CHECK`) que só um
+  teste de integração real pega. Regras de negócio puras (ex.: divisão de valor em parcelas,
+  status derivado da fatura, cálculo de saldo "até uma data") vivem isoladas em módulos
+  próprios, sem tocar banco/HTTP, com testes unitários dedicados.
+- **Frontend**: Vitest + React Testing Library para testes de componente/tela, com a API
+  mockada via MSW. Playwright para testes E2E (front + back + banco rodando juntos).
+- **E2E incremental**: cada fase adiciona pelo menos um teste E2E cobrindo seu fluxo principal,
+  em vez de concentrar tudo num conjunto de E2E gigante só no final.
+
+### Cobertura mínima
+- 90% de cobertura de linhas em backend e frontend
+- 100% de cobertura nos módulos de regra de negócio do backend (isolados conforme acima),
+  cobrindo cenários positivos **e** negativos — não só o caminho feliz
+- Sem meta de cobertura equivalente no frontend, que é majoritariamente UI/integração com a
+  API, não regra de negócio
+
+### CI/CD
+Ainda em aberto (ver "Infraestrutura de deploy" abaixo — Cloud Build ou GitHub Actions a
+definir). A exigência de teste/cobertura vale independente de automação de CI: por ora é
+aplicada por revisão/localmente, sem gate automático bloqueando push/PR.
+
 ## Roadmap de fases
 Não existe uma fase isolada de "painel web": o front (React + Vite + TypeScript) é construído
 incrementalmente dentro de cada fase, junto com o backend correspondente — cada fase entrega
@@ -73,9 +103,12 @@ API **e** as telas que a usam. O bot conversacional (Telegram) continua como int
    (+ telas de listagem/cadastro de contas, cartões e bancos)
 3. **Lançamentos manuais** — receitas/despesas, saldo por conta/cartão
    (+ tela de lançamento e extrato)
-4. **Cartão de crédito e faturas** — parcelamento, fechamento/vencimento, conta pagadora
-   (+ tela de fatura)
-5. **Contas a pagar/receber** (+ tela correspondente)
+4. **Cartão de crédito e faturas** — fechamento/vencimento, conta pagadora (+ tela de fatura).
+   Parcelamento simples já foi coberto na Fase 3; esta fase agrupa os lançamentos de cartão em
+   faturas reais (ver `specs/04-cartao-e-faturas/`)
+5. **Contas a pagar/receber** (+ tela correspondente) — cobrir aqui crediário/financiamento
+   fora do cartão (compra parcelada direto com uma loja, débito futuro em conta bancária),
+   deixado de fora da Fase 3 (ver `specs/03-lancamentos-manuais/requirements.md`)
 6. **Importação de arquivos** — OFX e CSV primeiro, PDF de fatura depois
    (+ tela de upload e revisão de importação)
 7. **Bot conversacional** — lançar, consultar saldo, enviar arquivo para importar (interface

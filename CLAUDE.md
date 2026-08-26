@@ -23,7 +23,7 @@ the current phase order before assuming a later phase can be built standalone.
 
 ## Architecture (from constitution.md and phase designs)
 
-- **Stack**: Node.js + TypeScript backend, MySQL (Cloud SQL in production)
+- **Stack**: Node.js + TypeScript backend, PostgreSQL (Cloud SQL in production)
 - **Multi-user**: every domain table is scoped by `user_id`. `user_id` must always come from
   the authenticated request (`req.userId`, populated by the `requireAuth` JWT middleware from
   Phase 1), never from client input — this is the core data-isolation invariant of the system.
@@ -33,7 +33,7 @@ the current phase order before assuming a later phase can be built standalone.
   endpoint.
 - **Interfaces**: a Telegram bot (webhook mode, not polling — required by Cloud Run's
   request-driven model) and a web dashboard, both calling the same backend API.
-- **Deploy target**: GCP — Cloud Run (backend container) + Cloud SQL (MySQL) + Secret Manager
+- **Deploy target**: GCP — Cloud Run (backend container) + Cloud SQL (PostgreSQL) + Secret Manager
   (JWT secret, DB credentials, bot token) + Artifact Registry.
 - **Money values**: always `DECIMAL`, never floating point.
 - **Credit cards**: a card may optionally link to a bank account (`linked_account_id`,

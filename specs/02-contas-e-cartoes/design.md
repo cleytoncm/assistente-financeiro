@@ -31,7 +31,7 @@ Notas:
   fatura específica, sem precisar editar o vínculo do cartão.
 - Valores monetários em `DECIMAL(12,2)` — nunca float, para evitar erro de arredondamento.
 - `initial_balance` é o ponto de partida do saldo; saldo corrente será calculado somando
-  lançamentos (Fase 2), não armazenado como campo mutável aqui.
+  lançamentos (Fase 3), não armazenado como campo mutável aqui.
 - `Bank` é catálogo compartilhado, não escopado por `user_id` — não passa pelo helper
   `scopedToUser` (RF-06). Populado via migration de seed com os principais bancos brasileiros
   (nome + código Bacen/COMPE); qualquer usuário autenticado pode adicionar um banco que falte.
@@ -73,8 +73,9 @@ entre usuários (RF-04 da Fase 1) sem que esta fase precise reimplementar nada d
 
 ## Decisões técnicas
 - ORM: Prisma, com `provider = "postgresql"` (Node.js/TypeScript + PostgreSQL)
-- Sem exclusão física por padrão seria uma opção (soft delete), mas como Fase 1 só bloqueia
-  remoção quando há lançamentos, exclusão física é suficiente por ora
+- Sem exclusão física por padrão seria uma opção (soft delete), mas como esta fase (RF-04) só
+  bloqueia remoção quando há lançamentos, exclusão física é suficiente por ora — revisitado na
+  Fase 3 (RF-09), que introduz exclusão em cascata como alternativa
 
 ## Frontend (React + Vite + TypeScript)
 Reaproveita o client HTTP e a guarda de rota da Fase 1.
