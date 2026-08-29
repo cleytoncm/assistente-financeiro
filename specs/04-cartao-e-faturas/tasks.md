@@ -49,8 +49,7 @@ abaixo já inclui o teste correspondente — nenhuma é considerada concluída s
       (requisito: RF-07)
 
 ## Backlog de fases futuras (specs ainda não escritas)
-- 05-contas-a-pagar-receber — lembrar de cobrir crediário/financiamento fora do cartão (ver
-  `specs/03-lancamentos-manuais/requirements.md`, "Fora de escopo")
+- 05-contas-a-pagar-receber — specs escritas em `specs/05-contas-a-pagar-receber/`
 - 06-importacao-arquivos
 - 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram)
 - 08-subusuarios (visualização compartilhada)

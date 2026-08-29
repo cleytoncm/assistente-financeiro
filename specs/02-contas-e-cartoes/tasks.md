@@ -57,8 +57,7 @@ Cada fase abaixo inclui sua própria fatia de frontend (React), não há mais um
 de "painel web" — ver roadmap em `constitution.md`.
 - 03-lancamentos-manuais — specs escritas em `specs/03-lancamentos-manuais/`
 - 04-cartao-e-faturas — specs escritas em `specs/04-cartao-e-faturas/`
-- 05-contas-a-pagar-receber — lembrar de cobrir crediário/financiamento fora do cartão (ver
-  `specs/03-lancamentos-manuais/requirements.md`, "Fora de escopo")
+- 05-contas-a-pagar-receber — specs escritas em `specs/05-contas-a-pagar-receber/`
 - 06-importacao-arquivos
 - 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram)
 - 08-subusuarios (visualização compartilhada)
