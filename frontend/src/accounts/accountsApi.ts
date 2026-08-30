@@ -11,6 +11,7 @@ export type Account = {
   isHidden: boolean
   bank?: Bank
   currentBalance: string
+  projectedBalance: string
 }
 
 export function listAccounts(options: { date?: string; includeHidden?: boolean } = {}): Promise<Account[]> {

@@ -52,6 +52,34 @@ type MockInvoice = {
   paymentAccountId: string | null
   paymentTransactionId: string | null
 }
+type PayableStatus = 'pendente' | 'vence_hoje' | 'atrasada' | 'paga' | 'cancelada'
+type MockPayableGroup = {
+  id: string
+  type: 'income' | 'expense'
+  recurrenceType: 'installment' | 'recurring'
+  installmentCount: number | null
+  amount: string
+  dueDay: number
+  description: string | null
+  counterparty: string | null
+  accountId: string | null
+}
+type MockPayable = {
+  id: string
+  groupId: string | null
+  type: 'income' | 'expense'
+  amount: string
+  dueDate: string
+  installmentNumber: number | null
+  description: string | null
+  counterparty: string | null
+  accountId: string | null
+  paidAmount: string | null
+  paidTransactionId: string | null
+  paidAt: string | null
+  cancelledAt: string | null
+  cancellationReason: string | null
+}
 
 const DEFAULT_BANKS: MockBank[] = [{ id: 'seed-bank-1', name: 'Banco do Brasil', code: '001' }]
 const DEFAULT_CATEGORIES: MockCategory[] = [
@@ -65,6 +93,8 @@ let accounts: MockAccount[] = []
 let cards: MockCard[] = []
 let transactions: MockTransaction[] = []
 let invoices: MockInvoice[] = []
+let payableGroups: MockPayableGroup[] = []
+let payables: MockPayable[] = []
 let nextId = 1
 
 export function resetMockData() {
@@ -74,9 +104,47 @@ export function resetMockData() {
   cards = []
   transactions = []
   invoices = []
+  payableGroups = []
+  payables = []
   nextId = 1
 }
 resetMockData()
+
+function dayInMonth(year: number, month: number, day: number): string {
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const clamped = Math.min(day, lastDay)
+  return new Date(Date.UTC(year, month - 1, clamped)).toISOString().slice(0, 10)
+}
+
+function generateDueDates(startDate: string, dueDay: number, count: number): string[] {
+  const [year, month] = startDate.slice(0, 7).split('-').map(Number)
+  const dates: string[] = []
+  for (let i = 0; i < count; i++) {
+    dates.push(dayInMonth(year!, month! + i, dueDay))
+  }
+  return dates
+}
+
+function computePayableStatus(payable: MockPayable): PayableStatus {
+  if (payable.cancelledAt) return 'cancelada'
+  if (payable.paidTransactionId) return 'paga'
+  const today = new Date().toISOString().slice(0, 10)
+  if (payable.dueDate < today) return 'atrasada'
+  if (payable.dueDate === today) return 'vence_hoje'
+  return 'pendente'
+}
+
+function serializePayable(payable: MockPayable) {
+  return { ...payable, status: computePayableStatus(payable) }
+}
+
+function computeProjectedAdjustment(accountId: string, date: string): number {
+  return payables
+    .filter(
+      (p) => p.accountId === accountId && !p.cancelledAt && !p.paidTransactionId && p.dueDate <= date
+    )
+    .reduce((acc, p) => acc + (p.type === 'income' ? Number(p.amount) : -Number(p.amount)), 0)
+}
 
 // Simplified invoice bucketing for mocked component tests: one invoice per (card, calendar
 // month) of the transaction's own date, rather than the real closing-day-aware period math the
@@ -190,7 +258,11 @@ export const handlers = [
     const includeHidden = url.searchParams.get('includeHidden') === 'true'
     const visible = includeHidden ? accounts : accounts.filter((a) => !a.isHidden)
     return HttpResponse.json(
-      visible.map((a) => ({ ...a, currentBalance: computeAccountBalance(a, date) }))
+      visible.map((a) => {
+        const currentBalance = computeAccountBalance(a, date)
+        const projectedBalance = Number(currentBalance) + computeProjectedAdjustment(a.id, date)
+        return { ...a, currentBalance, projectedBalance: projectedBalance.toString() }
+      })
     )
   }),
 
@@ -537,5 +609,339 @@ export const handlers = [
     invoice.paymentTransactionId = paymentTransaction.id
 
     return HttpResponse.json(serializeInvoice(invoice))
+  }),
+
+  http.post(`${BASE_URL}/payable-groups`, async ({ request }) => {
+    const body = (await request.json()) as {
+      type: 'income' | 'expense'
+      recurrenceType: 'installment' | 'recurring'
+      amount: number
+      dueDay: number
+      startDate: string
+      installmentCount?: number
+      description?: string
+      counterparty?: string
+      accountId?: string
+    }
+
+    const group: MockPayableGroup = {
+      id: `payable-group-${nextId++}`,
+      type: body.type,
+      recurrenceType: body.recurrenceType,
+      installmentCount: body.recurrenceType === 'installment' ? (body.installmentCount ?? null) : null,
+      amount: body.amount.toString(),
+      dueDay: body.dueDay,
+      description: body.description ?? null,
+      counterparty: body.counterparty ?? null,
+      accountId: body.accountId ?? null,
+    }
+    payableGroups.push(group)
+
+    const count = body.recurrenceType === 'installment' ? (body.installmentCount ?? 2) : 6
+    const dueDates = generateDueDates(body.startDate, body.dueDay, count)
+    dueDates.forEach((dueDate, index) => {
+      payables.push({
+        id: `payable-${nextId++}`,
+        groupId: group.id,
+        type: group.type,
+        amount: group.amount,
+        dueDate,
+        installmentNumber: index + 1,
+        description: group.description,
+        counterparty: group.counterparty,
+        accountId: group.accountId,
+        paidAmount: null,
+        paidTransactionId: null,
+        paidAt: null,
+        cancelledAt: null,
+        cancellationReason: null,
+      })
+    })
+
+    return HttpResponse.json(group, { status: 201 })
+  }),
+
+  http.get(`${BASE_URL}/payable-groups`, ({ request }) => {
+    const url = new URL(request.url)
+    const type = url.searchParams.get('type')
+    const filtered = type ? payableGroups.filter((g) => g.type === type) : payableGroups
+    return HttpResponse.json(
+      filtered.map((group) => {
+        const groupPayables = payables.filter((p) => p.groupId === group.id && !p.cancelledAt)
+        const next = groupPayables
+          .filter((p) => !p.paidTransactionId)
+          .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))[0]
+        return { ...group, payableCount: groupPayables.length, nextDueDate: next?.dueDate ?? null }
+      })
+    )
+  }),
+
+  http.get(`${BASE_URL}/payable-groups/:id`, ({ params }) => {
+    const group = payableGroups.find((g) => g.id === params.id)
+    if (!group) return HttpResponse.json({ error: 'Payable group not found' }, { status: 404 })
+    const groupPayables = payables
+      .filter((p) => p.groupId === group.id)
+      .sort((a, b) => (a.installmentNumber ?? 0) - (b.installmentNumber ?? 0))
+      .map(serializePayable)
+    return HttpResponse.json({ ...group, payables: groupPayables })
+  }),
+
+  http.patch(`${BASE_URL}/payable-groups/:id`, async ({ request, params }) => {
+    const group = payableGroups.find((g) => g.id === params.id)
+    if (!group) return HttpResponse.json({ error: 'Payable group not found' }, { status: 404 })
+
+    const body = (await request.json()) as {
+      amount?: number
+      dueDay?: number
+      description?: string | null
+      counterparty?: string | null
+      accountId?: string | null
+    }
+    if (body.amount !== undefined) group.amount = body.amount.toString()
+    if (body.dueDay !== undefined) group.dueDay = body.dueDay
+    if (body.description !== undefined) group.description = body.description
+    if (body.counterparty !== undefined) group.counterparty = body.counterparty
+    if (body.accountId !== undefined) group.accountId = body.accountId
+
+    for (const payable of payables) {
+      if (payable.groupId !== group.id || payable.paidTransactionId || payable.cancelledAt) continue
+      if (body.amount !== undefined) payable.amount = group.amount
+      if (body.dueDay !== undefined) {
+        const [year, month] = payable.dueDate.slice(0, 7).split('-').map(Number)
+        payable.dueDate = dayInMonth(year!, month!, body.dueDay)
+      }
+      if (body.description !== undefined) payable.description = group.description
+      if (body.counterparty !== undefined) payable.counterparty = group.counterparty
+      if (body.accountId !== undefined) payable.accountId = group.accountId
+    }
+
+    return HttpResponse.json(group)
+  }),
+
+  http.delete(`${BASE_URL}/payable-groups/:id`, async ({ request, params }) => {
+    const url = new URL(request.url)
+    const scope = url.searchParams.get('scope') ?? 'pending'
+    const group = payableGroups.find((g) => g.id === params.id)
+    if (!group) return HttpResponse.json({ error: 'Payable group not found' }, { status: 404 })
+
+    if (scope === 'pending') {
+      payables = payables.filter((p) => !(p.groupId === group.id && !p.paidTransactionId && !p.cancelledAt))
+      return new HttpResponse(null, { status: 204 })
+    }
+
+    const body = (await request.json()) as { confirmDeleteTransactions?: boolean }
+    const groupPayables = payables.filter((p) => p.groupId === group.id)
+    const paidCount = groupPayables.filter((p) => p.paidTransactionId).length
+    if (paidCount > 0 && !body.confirmDeleteTransactions) {
+      return HttpResponse.json(
+        { error: 'This group has paid payables; confirm to also delete their linked transactions', deletePaidCount: paidCount },
+        { status: 409 }
+      )
+    }
+
+    const paidTransactionIds = groupPayables.map((p) => p.paidTransactionId).filter((id): id is string => id !== null)
+    payables = payables.filter((p) => p.groupId !== group.id)
+    transactions = transactions.filter((t) => !paidTransactionIds.includes(t.id))
+    payableGroups = payableGroups.filter((g) => g.id !== group.id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post(`${BASE_URL}/payables`, async ({ request }) => {
+    const body = (await request.json()) as {
+      type: 'income' | 'expense'
+      amount: number
+      dueDate: string
+      description?: string
+      counterparty?: string
+      accountId?: string
+    }
+    const payable: MockPayable = {
+      id: `payable-${nextId++}`,
+      groupId: null,
+      type: body.type,
+      amount: body.amount.toString(),
+      dueDate: body.dueDate,
+      installmentNumber: null,
+      description: body.description ?? null,
+      counterparty: body.counterparty ?? null,
+      accountId: body.accountId ?? null,
+      paidAmount: null,
+      paidTransactionId: null,
+      paidAt: null,
+      cancelledAt: null,
+      cancellationReason: null,
+    }
+    payables.push(payable)
+    return HttpResponse.json(serializePayable(payable), { status: 201 })
+  }),
+
+  http.get(`${BASE_URL}/payables/summary`, ({ request }) => {
+    const url = new URL(request.url)
+    const until = url.searchParams.get('until') ?? new Date().toISOString().slice(0, 10)
+    const relevant = payables.filter((p) => !p.cancelledAt && !p.paidTransactionId && p.dueDate <= until)
+    const totalPayable = relevant
+      .filter((p) => p.type === 'expense')
+      .reduce((acc, p) => acc + Number(p.amount), 0)
+    const totalReceivable = relevant
+      .filter((p) => p.type === 'income')
+      .reduce((acc, p) => acc + Number(p.amount), 0)
+    return HttpResponse.json({ totalPayable: totalPayable.toString(), totalReceivable: totalReceivable.toString() })
+  }),
+
+  http.get(`${BASE_URL}/payables`, ({ request }) => {
+    const url = new URL(request.url)
+    const type = url.searchParams.get('type')
+    const status = url.searchParams.get('status') as PayableStatus | null
+    const until = url.searchParams.get('until')
+    const groupId = url.searchParams.get('groupId')
+    const accountId = url.searchParams.get('accountId')
+
+    let filtered = payables
+    if (type) filtered = filtered.filter((p) => p.type === type)
+    if (until) filtered = filtered.filter((p) => p.dueDate <= until)
+    if (groupId) filtered = filtered.filter((p) => p.groupId === groupId)
+    if (accountId) filtered = filtered.filter((p) => p.accountId === accountId)
+
+    let withStatus = filtered.map(serializePayable)
+    if (status) withStatus = withStatus.filter((p) => p.status === status)
+
+    const sorted = [...withStatus].sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))
+    return HttpResponse.json({ items: sorted, nextCursor: null })
+  }),
+
+  http.get(`${BASE_URL}/payables/:id`, ({ params }) => {
+    const payable = payables.find((p) => p.id === params.id)
+    if (!payable) return HttpResponse.json({ error: 'Payable not found' }, { status: 404 })
+    return HttpResponse.json(serializePayable(payable))
+  }),
+
+  http.patch(`${BASE_URL}/payables/:id`, async ({ request, params }) => {
+    const payable = payables.find((p) => p.id === params.id)
+    if (!payable) return HttpResponse.json({ error: 'Payable not found' }, { status: 404 })
+
+    const status = computePayableStatus(payable)
+    if (status === 'paga' || status === 'cancelada') {
+      return HttpResponse.json({ error: 'Payable cannot be edited once paid or cancelled' }, { status: 409 })
+    }
+
+    const body = (await request.json()) as {
+      amount?: number
+      dueDate?: string
+      description?: string | null
+      counterparty?: string | null
+      accountId?: string | null
+    }
+    if (body.amount !== undefined) payable.amount = body.amount.toString()
+    if (body.dueDate !== undefined) payable.dueDate = body.dueDate
+    if (body.description !== undefined) payable.description = body.description
+    if (body.counterparty !== undefined) payable.counterparty = body.counterparty
+    if (body.accountId !== undefined) payable.accountId = body.accountId
+
+    return HttpResponse.json(serializePayable(payable))
+  }),
+
+  http.post(`${BASE_URL}/payables/:id/pay`, async ({ request, params }) => {
+    const payable = payables.find((p) => p.id === params.id)
+    if (!payable) return HttpResponse.json({ error: 'Payable not found' }, { status: 404 })
+
+    const status = computePayableStatus(payable)
+    if (status === 'paga') return HttpResponse.json({ error: 'Payable is already paid' }, { status: 409 })
+    if (status === 'cancelada') return HttpResponse.json({ error: 'Payable is already cancelled' }, { status: 409 })
+
+    const body = (await request.json()) as { accountId: string; paidAmount?: number; date?: string }
+    const account = accounts.find((a) => a.id === body.accountId)
+    if (!account) return HttpResponse.json({ error: 'Account not found' }, { status: 400 })
+
+    const paidAmount = body.paidAmount ?? Number(payable.amount)
+    const date = body.date ?? new Date().toISOString().slice(0, 10)
+    const paymentTransaction: MockTransaction = {
+      id: `txn-${nextId++}`,
+      type: payable.type,
+      amount: paidAmount.toFixed(2),
+      date,
+      description: payable.description ?? 'Conta a pagar/receber',
+      categoryId: null,
+      accountId: account.id,
+      cardId: null,
+      refundOfTransactionId: null,
+      installmentGroupId: null,
+      installmentNumber: null,
+      installmentCount: null,
+      invoiceId: null,
+    }
+    transactions.push(paymentTransaction)
+
+    payable.paidAmount = paidAmount.toString()
+    payable.paidTransactionId = paymentTransaction.id
+    payable.paidAt = new Date().toISOString()
+
+    return HttpResponse.json(serializePayable(payable))
+  }),
+
+  http.post(`${BASE_URL}/payables/:id/cancel`, async ({ request, params }) => {
+    const payable = payables.find((p) => p.id === params.id)
+    if (!payable) return HttpResponse.json({ error: 'Payable not found' }, { status: 404 })
+
+    const status = computePayableStatus(payable)
+    if (status === 'cancelada') {
+      return HttpResponse.json({ error: 'Payable is already cancelled' }, { status: 409 })
+    }
+
+    const body = (await request.json()) as { cancellationReason?: string; confirmDeleteTransaction?: boolean }
+
+    if (status === 'paga') {
+      if (!body.confirmDeleteTransaction) {
+        const transaction = transactions.find((t) => t.id === payable.paidTransactionId)!
+        return HttpResponse.json(
+          {
+            error: 'This payable is already paid; confirm to also delete its linked transaction',
+            deleteTransaction: {
+              id: transaction.id,
+              amount: transaction.amount,
+              date: transaction.date,
+              accountId: transaction.accountId,
+            },
+          },
+          { status: 409 }
+        )
+      }
+      transactions = transactions.filter((t) => t.id !== payable.paidTransactionId)
+      payable.paidTransactionId = null
+      payable.paidAt = null
+      payable.paidAmount = null
+    }
+
+    payable.cancelledAt = new Date().toISOString()
+    payable.cancellationReason = body.cancellationReason ?? null
+
+    return HttpResponse.json(serializePayable(payable))
+  }),
+
+  http.delete(`${BASE_URL}/payables/:id`, async ({ request, params }) => {
+    const payable = payables.find((p) => p.id === params.id)
+    if (!payable) return HttpResponse.json({ error: 'Payable not found' }, { status: 404 })
+
+    if (payable.paidTransactionId) {
+      const body = (await request.json()) as { confirmDeleteTransaction?: boolean }
+      if (!body.confirmDeleteTransaction) {
+        const transaction = transactions.find((t) => t.id === payable.paidTransactionId)!
+        return HttpResponse.json(
+          {
+            error: 'This payable is already paid; confirm to also delete its linked transaction',
+            deleteTransaction: {
+              id: transaction.id,
+              amount: transaction.amount,
+              date: transaction.date,
+              accountId: transaction.accountId,
+            },
+          },
+          { status: 409 }
+        )
+      }
+      transactions = transactions.filter((t) => t.id !== payable.paidTransactionId)
+    }
+
+    payables = payables.filter((p) => p.id !== payable.id)
+    return new HttpResponse(null, { status: 204 })
   }),
 ]

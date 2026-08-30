@@ -25,6 +25,9 @@ export function HomePage() {
       <p>
         <Link to="/lancamentos">Lançamentos</Link>
       </p>
+      <p>
+        <Link to="/contas-a-pagar">Contas a Pagar/Receber</Link>
+      </p>
       <button type="button" onClick={logout}>
         Sair
       </button>

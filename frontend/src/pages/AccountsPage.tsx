@@ -131,6 +131,7 @@ export function AccountsPage() {
           {accounts.map((account) => (
             <li key={account.id}>
               {account.name} — {account.bank?.name} ({account.currency}) — saldo {account.currentBalance}
+              {' '}— previsto {account.projectedBalance}
               {!account.isActive && ' — inativa'}
               {account.isHidden && ' — oculta'}
               <button type="button" onClick={() => toggleAccountFlag(account, 'isActive')}>

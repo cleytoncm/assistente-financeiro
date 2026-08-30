@@ -8,6 +8,8 @@ import { AccountsPage } from './pages/AccountsPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { CardInvoicesPage } from './pages/CardInvoicesPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
+import { PayablesPage } from './pages/PayablesPage'
+import { PayableGroupDetailPage } from './pages/PayableGroupDetailPage'
 
 export function App() {
   return (
@@ -53,6 +55,22 @@ export function App() {
             element={
               <RequireAuth>
                 <InvoiceDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/contas-a-pagar"
+            element={
+              <RequireAuth>
+                <PayablesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/contas-a-pagar/grupos/:groupId"
+            element={
+              <RequireAuth>
+                <PayableGroupDetailPage />
               </RequireAuth>
             }
           />
