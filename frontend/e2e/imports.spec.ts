@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { formatCurrency } from '../src/lib/currency'
 
 async function registerAndLogin(page: import('@playwright/test').Page, name: string) {
   const email = `e2e-imports-${Date.now()}@example.com`
@@ -50,5 +51,5 @@ test('importa um CSV em modo staged, revisa e confirma, criando o lançamento', 
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Contas e Cartões' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: 'saldo 450' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: `saldo ${formatCurrency(450)}` })).toBeVisible()
 })

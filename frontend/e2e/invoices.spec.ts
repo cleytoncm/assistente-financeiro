@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { formatCurrency } from '../src/lib/currency'
 
 async function registerAndLogin(page: import('@playwright/test').Page, name: string) {
   const email = `e2e-invoices-${Date.now()}@example.com`
@@ -53,7 +54,7 @@ test('lança compra no cartão, vê a fatura gerada e paga debitando a conta vin
   const invoiceLink = page.getByRole('link', { name: /^\d{2}\/\d{4}$/ }).last()
   await invoiceLink.click()
 
-  await expect(page.getByText(/Total: 200/)).toBeVisible()
+  await expect(page.getByText(`Total: ${formatCurrency(200)}`)).toBeVisible()
   await expect(page.getByText('Compra E2E Fatura')).toBeVisible()
   await expect(page.getByLabel('Conta pagadora')).toHaveValue(/.+/)
 
@@ -63,5 +64,5 @@ test('lança compra no cartão, vê a fatura gerada e paga debitando a conta vin
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Voltar' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: 'saldo 800' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: `saldo ${formatCurrency(800)}` })).toBeVisible()
 })

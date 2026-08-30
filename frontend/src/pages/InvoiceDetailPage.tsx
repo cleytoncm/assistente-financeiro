@@ -5,6 +5,7 @@ import { listCards, type Card } from '../cards/cardsApi'
 import { getInvoice, getInvoiceTransactions, updateInvoice, payInvoice, type Invoice } from '../invoices/invoicesApi'
 import type { Transaction } from '../transactions/transactionsApi'
 import { ApiError } from '../lib/httpClient'
+import { formatCurrency } from '../lib/currency'
 import {
   PageHeader,
   Card as UiCard,
@@ -117,7 +118,7 @@ export function InvoiceDetailPage() {
 
       <UiCard className="flex flex-wrap items-center gap-3">
         <Badge tone={STATUS_TONES[invoice.status]}>{STATUS_LABELS[invoice.status]}</Badge>
-        <span className="text-sm text-slate-600 dark:text-slate-400">Total: {invoice.total}</span>
+        <span className="text-sm text-slate-600 dark:text-slate-400">Total: {formatCurrency(invoice.total)}</span>
       </UiCard>
 
       <UiCard>
@@ -172,7 +173,7 @@ export function InvoiceDetailPage() {
               </Select>
             </Field>
             <Button type="submit" variant="primary" disabled={isPaying}>
-              {isPaying ? 'Pagando...' : `Pagar fatura (${invoice.total})`}
+              {isPaying ? 'Pagando...' : `Pagar fatura (${formatCurrency(invoice.total)})`}
             </Button>
             {payError && <Alert>{payError}</Alert>}
           </form>
@@ -199,7 +200,7 @@ export function InvoiceDetailPage() {
                   }
                 >
                   {transaction.type === 'expense' ? '-' : '+'}
-                  {transaction.amount}
+                  {formatCurrency(transaction.amount)}
                 </span>
               </ItemRow>
             ))}

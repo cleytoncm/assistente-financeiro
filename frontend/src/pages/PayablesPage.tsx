@@ -5,6 +5,7 @@ import { listPayables, getPayablesSummary, type Payable, type PayableStatus } fr
 import { listPayableGroups, type PayableGroup } from '../payables/payableGroupsApi'
 import { PayableForm } from '../payables/PayableForm'
 import { PayableRow } from '../payables/PayableRow'
+import { formatCurrency } from '../lib/currency'
 import {
   PageHeader,
   Card as UiCard,
@@ -65,8 +66,10 @@ export function PayablesPage() {
         </Field>
         {summary && (
           <div className="flex gap-4 pb-2 text-sm">
-            <span className="text-red-600 dark:text-red-400">A pagar: {summary.totalPayable}</span>
-            <span className="text-emerald-600 dark:text-emerald-400">A receber: {summary.totalReceivable}</span>
+            <span className="text-red-600 dark:text-red-400">A pagar: {formatCurrency(summary.totalPayable)}</span>
+            <span className="text-emerald-600 dark:text-emerald-400">
+              A receber: {formatCurrency(summary.totalReceivable)}
+            </span>
           </div>
         )}
       </UiCard>

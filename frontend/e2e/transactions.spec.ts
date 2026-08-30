@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { formatCurrency } from '../src/lib/currency'
 
 async function registerAndLogin(page: import('@playwright/test').Page, name: string) {
   const email = `e2e-txn-${Date.now()}@example.com`
@@ -39,7 +40,7 @@ test('lança receita e despesa e vê refletido no saldo, depois remove em cascat
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Contas e Cartões' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: 'saldo 150' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: `saldo ${formatCurrency(150)}` })).toBeVisible()
 
   // Removing an account with transactions offers the 3-option dialog; cascade deletes both.
   await page.getByRole('listitem').filter({ hasText: 'Conta E2E Saldo' }).getByRole('button', { name: 'Remover' }).click()

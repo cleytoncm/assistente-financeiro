@@ -11,6 +11,7 @@ import {
   type ImportedRow,
 } from '../imports/importsApi'
 import { ApiError } from '../lib/httpClient'
+import { formatCurrency } from '../lib/currency'
 import {
   PageHeader,
   Card as UiCard,
@@ -103,7 +104,7 @@ function ImportedRowEditor({
             }
           >
             {row.type === 'expense' ? '-' : '+'}
-            {row.amount}
+            {formatCurrency(row.amount)}
           </span>
         )}
         {isPending && (

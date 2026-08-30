@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { formatCurrency } from '../src/lib/currency'
 
 async function registerAndLogin(page: import('@playwright/test').Page, name: string) {
   const email = `e2e-payables-${Date.now()}@example.com`
@@ -34,12 +35,12 @@ test('cadastra conta a pagar avulsa, vê o saldo previsto cair, depois paga e v�
   await page.getByLabel('Conta sugerida (opcional)').selectOption({ label: 'Conta E2E Payable' })
   await page.getByRole('button', { name: 'Cadastrar' }).click()
   await expect(page.getByText('Conta de luz')).toBeVisible()
-  await expect(page.getByText(/A pagar: 100/)).toBeVisible()
+  await expect(page.getByText(`A pagar: ${formatCurrency(100)}`)).toBeVisible()
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Contas e Cartões' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: 'saldo 1000' })).toBeVisible()
-  await expect(page.getByRole('listitem').filter({ hasText: 'previsto 900' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: `saldo ${formatCurrency(1000)}` })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: `previsto ${formatCurrency(900)}` })).toBeVisible()
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Contas a Pagar/Receber' }).click()
@@ -51,5 +52,5 @@ test('cadastra conta a pagar avulsa, vê o saldo previsto cair, depois paga e v�
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Contas e Cartões' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: 'saldo 900' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: `saldo ${formatCurrency(900)}` })).toBeVisible()
 })

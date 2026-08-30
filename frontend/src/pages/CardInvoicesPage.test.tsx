@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { CardInvoicesPage } from './CardInvoicesPage'
 import { createCard } from '../cards/cardsApi'
 import { createTransaction } from '../transactions/transactionsApi'
+import { money } from '../test/money'
 
 function renderPage(cardId: string) {
   return render(
@@ -32,7 +33,7 @@ describe('CardInvoicesPage', () => {
 
     expect(await screen.findByText(/Cartão Faturas/)).toBeInTheDocument()
     expect(await screen.findByText('03/2024')).toBeInTheDocument()
-    expect(screen.getByText(/total 100/)).toBeInTheDocument()
+    expect(screen.getByText(`total ${money(100)}`)).toBeInTheDocument()
   })
 
   it('navigates to the invoice detail page', async () => {

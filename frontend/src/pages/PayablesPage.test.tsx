@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { PayablesPage } from './PayablesPage'
 import { listBanks } from '../banks/banksApi'
 import { createAccount } from '../accounts/accountsApi'
+import { money } from '../test/money'
 
 function renderPage() {
   return render(
@@ -192,6 +193,6 @@ describe('PayablesPage', () => {
     const untilInput = screen.getByLabelText('Total previsto até')
     fireEvent.change(untilInput, { target: { value: farFutureDate() } })
 
-    expect(await screen.findByText(/A pagar: 500/)).toBeInTheDocument()
+    expect(await screen.findByText(`A pagar: ${money(500)}`)).toBeInTheDocument()
   })
 })

@@ -10,6 +10,7 @@ import { listCards, deleteCard, updateCardStatus, type Card } from '../cards/car
 import { AccountForm } from '../accounts/AccountForm'
 import { CardForm } from '../cards/CardForm'
 import { ApiError } from '../lib/httpClient'
+import { formatCurrency } from '../lib/currency'
 import {
   PageHeader,
   Card as UiCard,
@@ -162,8 +163,8 @@ export function AccountsPage() {
                     )}
                   </p>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {account.bank?.name} ({account.currency}) — saldo {account.currentBalance} — previsto{' '}
-                    {account.projectedBalance}
+                    {account.bank?.name} ({account.currency}) — saldo {formatCurrency(account.currentBalance)} —
+                    previsto {formatCurrency(account.projectedBalance)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -213,8 +214,8 @@ export function AccountsPage() {
                     )}
                   </p>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    limite {card.creditLimit} — gasto {card.currentSpending} — disponível{' '}
-                    {card.availableLimit}
+                    limite {formatCurrency(card.creditLimit)} — gasto {formatCurrency(card.currentSpending)} —
+                    disponível {formatCurrency(card.availableLimit)}
                     {card.linkedAccount ? ` — vinculado a ${card.linkedAccount.name}` : ' — sem vínculo'}
                   </p>
                 </div>

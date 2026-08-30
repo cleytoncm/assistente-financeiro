@@ -2,6 +2,7 @@ import { useState, type ComponentProps, type FormEvent } from 'react'
 import type { Account } from '../accounts/accountsApi'
 import { payPayable, cancelPayable, deletePayable, type Payable } from './payablesApi'
 import { ApiError } from '../lib/httpClient'
+import { formatCurrency } from '../lib/currency'
 import { ItemRow, Field, Input, Select, Button, Badge, Alert, ConfirmPanel } from '../components/ui'
 
 const STATUS_LABELS: Record<Payable['status'], string> = {
@@ -120,7 +121,7 @@ export function PayableRow({
             }
           >
             {payable.type === 'expense' ? '-' : '+'}
-            {payable.amount}
+            {formatCurrency(payable.amount)}
           </span>
         </div>
       </div>
@@ -197,7 +198,7 @@ export function PayableRow({
       {cancelConfirmation && (
         <ConfirmPanel aria-label="Confirmar cancelamento de parcela paga">
           <p>
-            Esta parcela já está paga (transação de {cancelConfirmation.amount} em{' '}
+            Esta parcela já está paga (transação de {formatCurrency(cancelConfirmation.amount)} em{' '}
             {cancelConfirmation.date.slice(0, 10)}). Cancelar também removerá essa transação. Deseja continuar?
           </p>
           <div className="flex gap-2">
@@ -214,7 +215,7 @@ export function PayableRow({
       {deleteConfirmation && (
         <ConfirmPanel aria-label="Confirmar exclusão de parcela paga">
           <p>
-            Esta parcela já está paga (transação de {deleteConfirmation.amount} em{' '}
+            Esta parcela já está paga (transação de {formatCurrency(deleteConfirmation.amount)} em{' '}
             {deleteConfirmation.date.slice(0, 10)}). Excluir também removerá essa transação. Deseja continuar?
           </p>
           <div className="flex gap-2">

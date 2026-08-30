@@ -4,6 +4,7 @@ import { updateTransaction, deleteTransaction } from './transactionsApi'
 import type { Category } from '../categories/categoriesApi'
 import { ApiError } from '../lib/httpClient'
 import { cn } from '../lib/cn'
+import { formatCurrency } from '../lib/currency'
 import { ItemRow, Input, Button, Badge, Alert } from '../components/ui'
 
 export function TransactionRow({
@@ -130,7 +131,7 @@ export function TransactionRow({
           )}
         >
           {transaction.type === 'expense' ? '-' : '+'}
-          {transaction.amount}
+          {formatCurrency(transaction.amount)}
         </span>
         <Button size="sm" onClick={() => setIsEditing(true)}>
           Editar

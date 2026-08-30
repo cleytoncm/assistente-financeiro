@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { listCards, type Card } from '../cards/cardsApi'
 import { listInvoicesForCard, type Invoice } from '../invoices/invoicesApi'
 import { PageHeader, ItemList, ItemRow, Badge, EmptyState } from '../components/ui'
+import { formatCurrency } from '../lib/currency'
 import type { ComponentProps } from 'react'
 
 const STATUS_LABELS: Record<Invoice['status'], string> = {
@@ -56,7 +57,7 @@ export function CardInvoicesPage() {
               </Link>
               <div className="flex items-center gap-3">
                 <Badge tone={STATUS_TONES[invoice.status]}>{STATUS_LABELS[invoice.status]}</Badge>
-                <span className="text-sm text-slate-500 dark:text-slate-400">total {invoice.total}</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">total {formatCurrency(invoice.total)}</span>
               </div>
             </ItemRow>
           ))}

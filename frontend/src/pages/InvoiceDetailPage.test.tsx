@@ -8,6 +8,8 @@ import { createAccount } from '../accounts/accountsApi'
 import { createTransaction } from '../transactions/transactionsApi'
 import { listInvoicesForCard } from '../invoices/invoicesApi'
 import { listBanks } from '../banks/banksApi'
+import { money } from '../test/money'
+import { formatCurrency } from '../lib/currency'
 
 function renderPage(invoiceId: string) {
   return render(
@@ -40,7 +42,7 @@ describe('InvoiceDetailPage', () => {
     renderPage(invoice!.id)
 
     expect(await screen.findByRole('heading', { name: 'Fatura 06/2024' })).toBeInTheDocument()
-    expect(screen.getByText(/Total: 75/)).toBeInTheDocument()
+    expect(screen.getByText(`Total: ${money(75)}`)).toBeInTheDocument()
     expect(await screen.findByText(/Farmácia/)).toBeInTheDocument()
   })
 
@@ -90,7 +92,7 @@ describe('InvoiceDetailPage', () => {
 
     expect(screen.getByLabelText('Conta pagadora')).toHaveValue(account.id)
 
-    await user.click(screen.getByRole('button', { name: 'Pagar fatura (40)' }))
+    await user.click(screen.getByRole('button', { name: `Pagar fatura (${formatCurrency(40)})` }))
 
     expect(await screen.findByText('Fatura paga.')).toBeInTheDocument()
     expect(screen.getByText('Paga')).toBeInTheDocument()
