@@ -15,7 +15,7 @@ export default defineConfig({
       jsdom: { url: 'http://localhost:3000/' },
     },
     globals: false,
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/test/nodeBlobFilePolyfill.ts', './src/test/fetchPolyfill.ts', './src/test/setup.ts'],
     exclude: ['**/node_modules/**', '**/e2e/**'],
     coverage: {
       provider: 'v8',

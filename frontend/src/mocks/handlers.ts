@@ -87,6 +87,33 @@ const DEFAULT_CATEGORIES: MockCategory[] = [
   { id: 'seed-cat-expense-1', userId: null, name: 'Alimentação', type: 'expense' },
 ]
 
+type MockImportBatch = {
+  id: string
+  format: 'ofx' | 'csv' | 'pdf_invoice'
+  accountId: string | null
+  cardId: string | null
+  mode: 'staged' | 'direct'
+  status: 'processando' | 'aguardando_revisao' | 'concluido' | 'falhou'
+  errorMessage: string | null
+  createdAt: string
+  processedAt: string | null
+  contentText: string
+}
+type MockImportedRow = {
+  id: string
+  importBatchId: string
+  date: string
+  description: string
+  amount: string
+  type: 'income' | 'expense'
+  externalId: string | null
+  isDuplicateSuspect: boolean
+  duplicateOfTransactionId: string | null
+  suggestedCategoryId: string | null
+  resolution: 'pendente' | 'aceita' | 'descartada'
+  createdTransactionId: string | null
+}
+
 let banks: MockBank[] = []
 let categories: MockCategory[] = []
 let accounts: MockAccount[] = []
@@ -95,6 +122,8 @@ let transactions: MockTransaction[] = []
 let invoices: MockInvoice[] = []
 let payableGroups: MockPayableGroup[] = []
 let payables: MockPayable[] = []
+let importBatches: MockImportBatch[] = []
+let importedRows: MockImportedRow[] = []
 let nextId = 1
 
 export function resetMockData() {
@@ -106,9 +135,114 @@ export function resetMockData() {
   invoices = []
   payableGroups = []
   payables = []
+  importBatches = []
+  importedRows = []
   nextId = 1
 }
 resetMockData()
+
+function normalizeDescriptionForMock(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+function toPublicImportBatch(batch: MockImportBatch) {
+  const { contentText: _contentText, ...publicFields } = batch
+  return publicFields
+}
+
+/** Parses `date,description,amount,type` lines — stands in for the real OFX/LLM extractors. */
+function parseMockImportRows(
+  text: string
+): Array<{ date: string; description: string; amount: string; type: 'income' | 'expense' }> | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  if (lines.length === 0) return null
+
+  const rows: Array<{ date: string; description: string; amount: string; type: 'income' | 'expense' }> = []
+  for (const line of lines) {
+    const [date, description, amount, type] = line.split(',').map((part) => part.trim())
+    if (!date || !description || !amount || (type !== 'income' && type !== 'expense')) return null
+    const amountValue = Number(amount)
+    if (!Number.isFinite(amountValue) || amountValue <= 0) return null
+    rows.push({ date, description, amount: amountValue.toFixed(2), type })
+  }
+  return rows
+}
+
+function processMockImportBatch(batch: MockImportBatch) {
+  const rows = parseMockImportRows(batch.contentText)
+  if (!rows) {
+    batch.status = 'falhou'
+    batch.errorMessage = 'Não foi possível processar o arquivo. Tente exportar em outro formato.'
+    batch.processedAt = new Date().toISOString()
+    return
+  }
+
+  let anyPending = false
+  for (const row of rows) {
+    const suspect = transactions.find(
+      (t) =>
+        (batch.accountId ? t.accountId === batch.accountId : t.cardId === batch.cardId) &&
+        t.date.slice(0, 10) === row.date &&
+        t.amount === row.amount &&
+        t.type === row.type
+    )
+    const normalized = normalizeDescriptionForMock(row.description)
+    const suggested = transactions.find(
+      (t) => t.categoryId && normalizeDescriptionForMock(t.description) === normalized
+    )
+
+    const importedRow: MockImportedRow = {
+      id: `imported-row-${nextId++}`,
+      importBatchId: batch.id,
+      date: row.date,
+      description: row.description,
+      amount: row.amount,
+      type: row.type,
+      externalId: null,
+      isDuplicateSuspect: Boolean(suspect),
+      duplicateOfTransactionId: suspect?.id ?? null,
+      suggestedCategoryId: suggested?.categoryId ?? null,
+      resolution: 'pendente',
+      createdTransactionId: null,
+    }
+    importedRows.push(importedRow)
+
+    if (batch.mode === 'direct' && !suspect) {
+      const invoice = batch.cardId ? findOrCreateInvoice(batch.cardId, row.date) : null
+      const transaction: MockTransaction = {
+        id: `txn-${nextId++}`,
+        type: row.type,
+        amount: row.amount,
+        date: row.date,
+        description: row.description,
+        categoryId: importedRow.suggestedCategoryId,
+        accountId: batch.accountId,
+        cardId: batch.cardId,
+        refundOfTransactionId: null,
+        installmentGroupId: null,
+        installmentNumber: null,
+        installmentCount: null,
+        invoiceId: invoice?.id ?? null,
+      }
+      transactions.push(transaction)
+      importedRow.resolution = 'aceita'
+      importedRow.createdTransactionId = transaction.id
+    } else {
+      anyPending = true
+    }
+  }
+
+  batch.status = anyPending ? 'aguardando_revisao' : 'concluido'
+  batch.processedAt = new Date().toISOString()
+}
 
 function dayInMonth(year: number, month: number, day: number): string {
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
@@ -943,5 +1077,135 @@ export const handlers = [
 
     payables = payables.filter((p) => p.id !== payable.id)
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post(`${BASE_URL}/import-batches`, async ({ request }) => {
+    const formData = await request.formData()
+    const file = formData.get('file') as File | null
+    if (!file) return HttpResponse.json({ error: 'A file is required' }, { status: 400 })
+
+    const format = formData.get('format') as MockImportBatch['format']
+    const mode = formData.get('mode') as MockImportBatch['mode']
+    const accountId = (formData.get('accountId') as string | null) || null
+    const cardId = (formData.get('cardId') as string | null) || null
+    const confirmDuplicateFile = formData.get('confirmDuplicateFile') === 'true'
+    const contentText = await file.text()
+
+    if (!confirmDuplicateFile) {
+      const previous = importBatches.find((b) => b.contentText === contentText && b.status === 'concluido')
+      if (previous) {
+        return HttpResponse.json(
+          {
+            error: 'An identical file was already imported successfully; confirm to import it again',
+            previousImportBatchId: previous.id,
+            previousImportedAt: previous.processedAt,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
+    const batch: MockImportBatch = {
+      id: `import-${nextId++}`,
+      format,
+      accountId,
+      cardId,
+      mode,
+      status: 'processando',
+      errorMessage: null,
+      createdAt: new Date().toISOString(),
+      processedAt: null,
+      contentText,
+    }
+    importBatches.push(batch)
+    processMockImportBatch(batch)
+
+    return HttpResponse.json(toPublicImportBatch(batch), { status: 202 })
+  }),
+
+  http.get(`${BASE_URL}/import-batches`, () => {
+    const sorted = [...importBatches].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    return HttpResponse.json(sorted.map(toPublicImportBatch))
+  }),
+
+  http.get(`${BASE_URL}/import-batches/:id`, ({ params }) => {
+    const batch = importBatches.find((b) => b.id === params.id)
+    if (!batch) return HttpResponse.json({ error: 'Import batch not found' }, { status: 404 })
+    return HttpResponse.json(toPublicImportBatch(batch))
+  }),
+
+  http.get(`${BASE_URL}/import-batches/:id/rows`, ({ params }) => {
+    const batch = importBatches.find((b) => b.id === params.id)
+    if (!batch) return HttpResponse.json({ error: 'Import batch not found' }, { status: 404 })
+    return HttpResponse.json(importedRows.filter((r) => r.importBatchId === batch.id))
+  }),
+
+  http.post(`${BASE_URL}/import-batches/:id/confirm`, ({ params }) => {
+    const batch = importBatches.find((b) => b.id === params.id)
+    if (!batch) return HttpResponse.json({ error: 'Import batch not found' }, { status: 404 })
+    if (batch.status !== 'aguardando_revisao') {
+      return HttpResponse.json({ error: 'Import batch is not awaiting review' }, { status: 409 })
+    }
+
+    const pending = importedRows.filter((r) => r.importBatchId === batch.id && r.resolution === 'pendente')
+    for (const row of pending) {
+      const invoice = batch.cardId ? findOrCreateInvoice(batch.cardId, row.date) : null
+      const transaction: MockTransaction = {
+        id: `txn-${nextId++}`,
+        type: row.type,
+        amount: row.amount,
+        date: row.date,
+        description: row.description,
+        categoryId: row.suggestedCategoryId,
+        accountId: batch.accountId,
+        cardId: batch.cardId,
+        refundOfTransactionId: null,
+        installmentGroupId: null,
+        installmentNumber: null,
+        installmentCount: null,
+        invoiceId: invoice?.id ?? null,
+      }
+      transactions.push(transaction)
+      row.resolution = 'aceita'
+      row.createdTransactionId = transaction.id
+    }
+
+    batch.status = 'concluido'
+    batch.processedAt = new Date().toISOString()
+    return HttpResponse.json(toPublicImportBatch(batch))
+  }),
+
+  http.patch(`${BASE_URL}/imported-rows/:id`, async ({ request, params }) => {
+    const row = importedRows.find((r) => r.id === params.id)
+    if (!row) return HttpResponse.json({ error: 'Imported row not found' }, { status: 404 })
+    if (row.resolution !== 'pendente') {
+      return HttpResponse.json({ error: 'Imported row is not pending review' }, { status: 409 })
+    }
+
+    const body = (await request.json()) as {
+      date?: string
+      description?: string
+      amount?: number
+      type?: 'income' | 'expense'
+      categoryId?: string | null
+    }
+    if (body.date !== undefined) row.date = body.date
+    if (body.description !== undefined) row.description = body.description
+    if (body.amount !== undefined) row.amount = body.amount.toFixed(2)
+    if (body.type !== undefined) row.type = body.type
+    if (body.categoryId !== undefined) row.suggestedCategoryId = body.categoryId
+
+    return HttpResponse.json(row)
+  }),
+
+  http.post(`${BASE_URL}/imported-rows/:id/discard`, ({ params }) => {
+    const row = importedRows.find((r) => r.id === params.id)
+    if (!row) return HttpResponse.json({ error: 'Imported row not found' }, { status: 404 })
+    if (row.resolution !== 'pendente') {
+      return HttpResponse.json({ error: 'Imported row is not pending review' }, { status: 409 })
+    }
+
+    row.resolution = 'descartada'
+    return HttpResponse.json(row)
   }),
 ]

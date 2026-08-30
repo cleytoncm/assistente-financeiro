@@ -10,6 +10,9 @@ import { CardInvoicesPage } from './pages/CardInvoicesPage'
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { PayablesPage } from './pages/PayablesPage'
 import { PayableGroupDetailPage } from './pages/PayableGroupDetailPage'
+import { ImportUploadPage } from './pages/ImportUploadPage'
+import { ImportBatchDetailPage } from './pages/ImportBatchDetailPage'
+import { ImportHistoryPage } from './pages/ImportHistoryPage'
 
 export function App() {
   return (
@@ -71,6 +74,30 @@ export function App() {
             element={
               <RequireAuth>
                 <PayableGroupDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/importacoes"
+            element={
+              <RequireAuth>
+                <ImportHistoryPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/importacoes/nova"
+            element={
+              <RequireAuth>
+                <ImportUploadPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/importacoes/:id"
+            element={
+              <RequireAuth>
+                <ImportBatchDetailPage />
               </RequireAuth>
             }
           />

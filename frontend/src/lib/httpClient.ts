@@ -31,8 +31,13 @@ export const UNAUTHORIZED_EVENT = 'auth:unauthorized'
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData
   const headers = new Headers(options.headers)
-  headers.set('Content-Type', 'application/json')
+  // A FormData body's Content-Type (multipart, with boundary) must be set by the browser, not
+  // JSON.stringify'd — used for file uploads (Etapa 6).
+  if (!isFormData) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   const token = getToken()
   if (token) {
@@ -42,7 +47,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: isFormData ? (options.body as FormData) : options.body !== undefined ? JSON.stringify(options.body) : undefined,
   })
 
   const data = await response.json().catch(() => null)

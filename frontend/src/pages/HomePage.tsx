@@ -28,6 +28,9 @@ export function HomePage() {
       <p>
         <Link to="/contas-a-pagar">Contas a Pagar/Receber</Link>
       </p>
+      <p>
+        <Link to="/importacoes">Importações</Link>
+      </p>
       <button type="button" onClick={logout}>
         Sair
       </button>
