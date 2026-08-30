@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { listBanks, createBank, type Bank } from '../banks/banksApi'
 import { createAccount, type Account } from './accountsApi'
 import { ApiError } from '../lib/httpClient'
+import { Field, Input, Select, Button, Alert } from '../components/ui'
 
 export function AccountForm({ onCreated }: { onCreated: (account: Account) => void }) {
   const [banks, setBanks] = useState<Bank[]>([])
@@ -68,65 +69,67 @@ export function AccountForm({ onCreated }: { onCreated: (account: Account) => vo
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Nova conta">
-      <label htmlFor="account-name">Nome da conta</label>
-      <input id="account-name" value={name} onChange={(e) => setName(e.target.value)} required />
+    <form onSubmit={handleSubmit} aria-label="Nova conta" className="space-y-4">
+      <Field label="Nome da conta" htmlFor="account-name">
+        <Input id="account-name" value={name} onChange={(e) => setName(e.target.value)} required />
+      </Field>
 
-      <label htmlFor="account-bank">Banco</label>
-      <select id="account-bank" value={bankId} onChange={(e) => setBankId(e.target.value)} required>
-        {banks.map((bank) => (
-          <option key={bank.id} value={bank.id}>
-            {bank.name}
-          </option>
-        ))}
-      </select>
-      <button type="button" onClick={() => setShowNewBank((v) => !v)}>
-        {showNewBank ? 'Cancelar' : 'Cadastrar novo banco'}
-      </button>
+      <Field label="Banco" htmlFor="account-bank">
+        <div className="flex items-center gap-2">
+          <Select id="account-bank" value={bankId} onChange={(e) => setBankId(e.target.value)} required>
+            {banks.map((bank) => (
+              <option key={bank.id} value={bank.id}>
+                {bank.name}
+              </option>
+            ))}
+          </Select>
+          <Button type="button" size="sm" className="shrink-0" onClick={() => setShowNewBank((v) => !v)}>
+            {showNewBank ? 'Cancelar' : 'Cadastrar novo banco'}
+          </Button>
+        </div>
+      </Field>
 
       {showNewBank && (
-        <div>
-          <label htmlFor="new-bank-name">Nome do banco</label>
-          <input
-            id="new-bank-name"
-            value={newBankName}
-            onChange={(e) => setNewBankName(e.target.value)}
-          />
-          <label htmlFor="new-bank-code">Código</label>
-          <input
-            id="new-bank-code"
-            value={newBankCode}
-            onChange={(e) => setNewBankCode(e.target.value)}
-          />
-          <button type="button" onClick={handleCreateBank}>
+        <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+          <Field label="Nome do banco" htmlFor="new-bank-name">
+            <Input id="new-bank-name" value={newBankName} onChange={(e) => setNewBankName(e.target.value)} />
+          </Field>
+          <Field label="Código" htmlFor="new-bank-code">
+            <Input id="new-bank-code" value={newBankCode} onChange={(e) => setNewBankCode(e.target.value)} />
+          </Field>
+          <Button type="button" size="sm" onClick={handleCreateBank}>
             Salvar banco
-          </button>
+          </Button>
         </div>
       )}
 
-      <label htmlFor="account-currency">Moeda</label>
-      <input
-        id="account-currency"
-        value={currency}
-        onChange={(e) => setCurrency(e.target.value)}
-        maxLength={3}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Moeda" htmlFor="account-currency">
+          <Input
+            id="account-currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            maxLength={3}
+          />
+        </Field>
 
-      <label htmlFor="account-initial-balance">Saldo inicial</label>
-      <input
-        id="account-initial-balance"
-        type="number"
-        step="0.01"
-        value={initialBalance}
-        onChange={(e) => setInitialBalance(e.target.value)}
-        required
-      />
+        <Field label="Saldo inicial" htmlFor="account-initial-balance">
+          <Input
+            id="account-initial-balance"
+            type="number"
+            step="0.01"
+            value={initialBalance}
+            onChange={(e) => setInitialBalance(e.target.value)}
+            required
+          />
+        </Field>
+      </div>
 
-      {error && <p role="alert">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
-      <button type="submit" disabled={isSubmitting}>
+      <Button type="submit" variant="primary" disabled={isSubmitting}>
         {isSubmitting ? 'Criando...' : 'Criar conta'}
-      </button>
+      </Button>
     </form>
   )
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { listAccounts, type Account } from '../accounts/accountsApi'
 import { listCards, type Card } from '../cards/cardsApi'
 import { createImportBatch, type ImportFormat, type ImportMode } from '../imports/importsApi'
 import { ApiError } from '../lib/httpClient'
+import { PageHeader, Card as UiCard, Field, Select, Button, Alert, ConfirmPanel } from '../components/ui'
 
 export function ImportUploadPage() {
   const navigate = useNavigate()
@@ -63,76 +64,82 @@ export function ImportUploadPage() {
   }
 
   return (
-    <main>
-      <p>
-        <Link to="/importacoes">Voltar</Link>
-      </p>
-      <h1>Nova Importação</h1>
+    <div className="space-y-6">
+      <PageHeader backTo="/importacoes" title="Nova Importação" />
 
-      <form onSubmit={handleSubmit} aria-label="Nova importação">
-        <label htmlFor="import-format">Formato</label>
-        <select
-          id="import-format"
-          value={format}
-          onChange={(e) => {
-            setFormat(e.target.value as ImportFormat)
-            setDestinationId('')
-          }}
-        >
-          <option value="ofx">OFX (extrato)</option>
-          <option value="csv">CSV (extrato)</option>
-          <option value="pdf_invoice">PDF de fatura</option>
-        </select>
+      <UiCard className="max-w-xl">
+        <form onSubmit={handleSubmit} aria-label="Nova importação" className="space-y-4">
+          <Field label="Formato" htmlFor="import-format">
+            <Select
+              id="import-format"
+              value={format}
+              onChange={(e) => {
+                setFormat(e.target.value as ImportFormat)
+                setDestinationId('')
+              }}
+            >
+              <option value="ofx">OFX (extrato)</option>
+              <option value="csv">CSV (extrato)</option>
+              <option value="pdf_invoice">PDF de fatura</option>
+            </Select>
+          </Field>
 
-        <label htmlFor="import-destination">{isCardFormat ? 'Cartão' : 'Conta'}</label>
-        <select
-          id="import-destination"
-          value={destinationId}
-          onChange={(e) => setDestinationId(e.target.value)}
-          required
-        >
-          <option value="">Selecione...</option>
-          {(isCardFormat ? cards : accounts).map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
+          <Field label={isCardFormat ? 'Cartão' : 'Conta'} htmlFor="import-destination">
+            <Select
+              id="import-destination"
+              value={destinationId}
+              onChange={(e) => setDestinationId(e.target.value)}
+              required
+            >
+              <option value="">Selecione...</option>
+              {(isCardFormat ? cards : accounts).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-        <label htmlFor="import-mode">Modo</label>
-        <select id="import-mode" value={mode} onChange={(e) => setMode(e.target.value as ImportMode)}>
-          <option value="staged">Revisar tudo antes de confirmar</option>
-          <option value="direct">Aceitar automaticamente (exceto suspeitas de duplicata)</option>
-        </select>
+          <Field label="Modo" htmlFor="import-mode">
+            <Select id="import-mode" value={mode} onChange={(e) => setMode(e.target.value as ImportMode)}>
+              <option value="staged">Revisar tudo antes de confirmar</option>
+              <option value="direct">Aceitar automaticamente (exceto suspeitas de duplicata)</option>
+            </Select>
+          </Field>
 
-        <label htmlFor="import-file">Arquivo</label>
-        <input
-          id="import-file"
-          type="file"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
+          <Field label="Arquivo" htmlFor="import-file">
+            <input
+              id="import-file"
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-slate-300 dark:file:bg-indigo-950 dark:file:text-indigo-300"
+            />
+          </Field>
 
-        {error && <p role="alert">{error}</p>}
+          {error && <Alert>{error}</Alert>}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Enviando...' : 'Enviar'}
-        </button>
-      </form>
+          <Button type="submit" variant="primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Enviando...' : 'Enviar'}
+          </Button>
+        </form>
+      </UiCard>
 
       {duplicateWarning && (
-        <section role="alertdialog" aria-label="Confirmar reimportação de arquivo duplicado">
+        <ConfirmPanel aria-label="Confirmar reimportação de arquivo duplicado" className="max-w-xl">
           <p>
             Um arquivo idêntico já foi importado com sucesso em {duplicateWarning.previousImportedAt.slice(0, 10)}.
             Deseja importar mesmo assim?
           </p>
-          <button type="button" onClick={() => submit(true)} disabled={isSubmitting}>
-            Importar mesmo assim
-          </button>
-          <button type="button" onClick={() => setDuplicateWarning(null)}>
-            Cancelar
-          </button>
-        </section>
+          <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={() => submit(true)} disabled={isSubmitting}>
+              Importar mesmo assim
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDuplicateWarning(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </ConfirmPanel>
       )}
-    </main>
+    </div>
   )
 }

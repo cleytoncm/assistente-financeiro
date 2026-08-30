@@ -3,6 +3,8 @@ import type { Transaction } from './transactionsApi'
 import { updateTransaction, deleteTransaction } from './transactionsApi'
 import type { Category } from '../categories/categoriesApi'
 import { ApiError } from '../lib/httpClient'
+import { cn } from '../lib/cn'
+import { ItemRow, Input, Button, Badge, Alert } from '../components/ui'
 
 export function TransactionRow({
   transaction,
@@ -56,76 +58,110 @@ export function TransactionRow({
 
   if (isEditing) {
     return (
-      <li>
-        <input
-          aria-label={`Descrição de ${transaction.description}`}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <input
-          aria-label={`Valor de ${transaction.description}`}
-          type="number"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
+      <ItemRow className="flex-col items-stretch">
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            aria-label={`Descrição de ${transaction.description}`}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="max-w-xs"
+          />
+          <Input
+            aria-label={`Valor de ${transaction.description}`}
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="max-w-32"
+          />
+        </div>
         {isInstallment && (
-          <label>
+          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
             <input
               type="checkbox"
               checked={applyToRemaining}
               onChange={(e) => setApplyToRemaining(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-slate-600"
             />
             Aplicar às parcelas restantes
           </label>
         )}
-        <button type="button" onClick={handleSave}>
-          Salvar
-        </button>
-        <button type="button" onClick={() => setIsEditing(false)}>
-          Cancelar
-        </button>
-        {lockError && <p role="alert">{lockError}</p>}
-      </li>
+        <div className="flex gap-2">
+          <Button size="sm" variant="primary" onClick={handleSave}>
+            Salvar
+          </Button>
+          <Button size="sm" onClick={() => setIsEditing(false)}>
+            Cancelar
+          </Button>
+        </div>
+        {lockError && <Alert>{lockError}</Alert>}
+      </ItemRow>
     )
   }
 
   return (
-    <li>
-      {transaction.date.slice(0, 10)} — {transaction.description} — {transaction.type === 'expense' ? '-' : '+'}
-      {transaction.amount}
-      {category && ` — ${category.name}`}
-      {transaction.installmentNumber && ` — ${transaction.installmentNumber}/${transaction.installmentCount}`}
-      {transaction.refundOfTransactionId && ' — estorno'}
-      <button type="button" onClick={() => setIsEditing(true)}>
-        Editar
-      </button>
-      {isConfirmingDelete ? (
-        <span>
-          {isInstallment ? (
-            <>
-              <button type="button" onClick={() => handleDelete('single')}>
-                Remover só esta
-              </button>
-              <button type="button" onClick={() => handleDelete('remaining')}>
-                Remover esta e as restantes
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => handleDelete('single')}>
-              Confirmar remoção
-            </button>
+    <ItemRow>
+      <div>
+        <p className="font-medium text-slate-900 dark:text-slate-50">
+          {transaction.description}
+          {category && (
+            <Badge tone="blue" className="ml-2">
+              {category.name}
+            </Badge>
           )}
-          <button type="button" onClick={() => setIsConfirmingDelete(false)}>
-            Cancelar
-          </button>
+          {transaction.installmentNumber && (
+            <Badge tone="slate" className="ml-2">
+              {transaction.installmentNumber}/{transaction.installmentCount}
+            </Badge>
+          )}
+          {transaction.refundOfTransactionId && (
+            <Badge tone="purple" className="ml-2">
+              estorno
+            </Badge>
+          )}
+        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{transaction.date.slice(0, 10)}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <span
+          className={cn(
+            'font-semibold tabular-nums',
+            transaction.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'
+          )}
+        >
+          {transaction.type === 'expense' ? '-' : '+'}
+          {transaction.amount}
         </span>
-      ) : (
-        <button type="button" onClick={() => setIsConfirmingDelete(true)}>
-          Remover
-        </button>
-      )}
-      {lockError && <p role="alert">{lockError}</p>}
-    </li>
+        <Button size="sm" onClick={() => setIsEditing(true)}>
+          Editar
+        </Button>
+        {isConfirmingDelete ? (
+          <span className="flex flex-wrap gap-2">
+            {isInstallment ? (
+              <>
+                <Button size="sm" variant="danger" onClick={() => handleDelete('single')}>
+                  Remover só esta
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => handleDelete('remaining')}>
+                  Remover esta e as restantes
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" variant="danger" onClick={() => handleDelete('single')}>
+                Confirmar remoção
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setIsConfirmingDelete(false)}>
+              Cancelar
+            </Button>
+          </span>
+        ) : (
+          <Button size="sm" variant="danger" onClick={() => setIsConfirmingDelete(true)}>
+            Remover
+          </Button>
+        )}
+      </div>
+      {lockError && <Alert>{lockError}</Alert>}
+    </ItemRow>
   )
 }

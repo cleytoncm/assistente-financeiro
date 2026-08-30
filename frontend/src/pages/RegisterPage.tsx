@@ -2,6 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerRequest } from '../auth/authApi'
 import { ApiError } from '../lib/httpClient'
+import { AuthLayout } from '../components/AuthLayout'
+import { Field } from '../components/ui/Field'
+import { Input } from '../components/ui/Input'
+import { Button } from '../components/ui/Button'
+import { Alert } from '../components/ui/Alert'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -27,47 +32,38 @@ export function RegisterPage() {
   }
 
   return (
-    <main>
-      <h1>Criar conta</h1>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="name">Nome</label>
-        <input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
+    <AuthLayout>
+      <h1 className="mb-4 text-xl">Criar conta</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Nome" htmlFor="name">
+          <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+        </Field>
 
-        <label htmlFor="email">E-mail</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <Field label="E-mail" htmlFor="email">
+          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </Field>
 
-        <label htmlFor="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={8}
-          required
-        />
+        <Field label="Senha" htmlFor="password">
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+        </Field>
 
-        {error && <p role="alert">{error}</p>}
+        {error && <Alert>{error}</Alert>}
 
-        <button type="submit" disabled={isSubmitting}>
+        <Button type="submit" variant="primary" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Criando conta...' : 'Criar conta'}
-        </button>
+        </Button>
       </form>
 
-      <p>
+      <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-400">
         Já tem conta? <Link to="/login">Entrar</Link>
       </p>
-    </main>
+    </AuthLayout>
   )
 }

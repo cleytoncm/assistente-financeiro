@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { listAccounts, type Account } from '../accounts/accountsApi'
 import { listCards, type Card } from '../cards/cardsApi'
 import { listImportBatches, type ImportBatch } from '../imports/importsApi'
+import { PageHeader, buttonClasses, Badge, ItemList, ItemRow, EmptyState } from '../components/ui'
 
 const FORMAT_LABELS: Record<ImportBatch['format'], string> = {
   ofx: 'OFX',
@@ -15,6 +16,13 @@ const STATUS_LABELS: Record<ImportBatch['status'], string> = {
   aguardando_revisao: 'Aguardando revisão',
   concluido: 'Concluído',
   falhou: 'Falhou',
+}
+
+const STATUS_TONES: Record<ImportBatch['status'], ComponentProps<typeof Badge>['tone']> = {
+  processando: 'blue',
+  aguardando_revisao: 'amber',
+  concluido: 'green',
+  falhou: 'red',
 }
 
 export function ImportHistoryPage() {
@@ -46,26 +54,34 @@ export function ImportHistoryPage() {
   }
 
   return (
-    <main>
-      <p>
-        <Link to="/">Voltar</Link>
-      </p>
-      <h1>Importações</h1>
-      <p>
-        <Link to="/importacoes/nova">Nova importação</Link>
-      </p>
+    <div>
+      <PageHeader
+        backTo="/"
+        title="Importações"
+        actions={
+          <Link to="/importacoes/nova" className={buttonClasses('primary')}>
+            Nova importação
+          </Link>
+        }
+      />
 
-      {loaded && batches.length === 0 && <p>Nenhuma importação realizada ainda.</p>}
-      <ul>
-        {batches.map((batch) => (
-          <li key={batch.id}>
-            <Link to={`/importacoes/${batch.id}`}>
-              {batch.createdAt.slice(0, 10)} — {FORMAT_LABELS[batch.format]} — {destinationName(batch)}
-            </Link>{' '}
-            — {STATUS_LABELS[batch.status]}
-          </li>
-        ))}
-      </ul>
-    </main>
+      {loaded && batches.length === 0 ? (
+        <EmptyState>Nenhuma importação realizada ainda.</EmptyState>
+      ) : (
+        <ItemList>
+          {batches.map((batch) => (
+            <ItemRow key={batch.id}>
+              <Link
+                to={`/importacoes/${batch.id}`}
+                className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+              >
+                {batch.createdAt.slice(0, 10)} — {FORMAT_LABELS[batch.format]} — {destinationName(batch)}
+              </Link>
+              <Badge tone={STATUS_TONES[batch.status]}>{STATUS_LABELS[batch.status]}</Badge>
+            </ItemRow>
+          ))}
+        </ItemList>
+      )}
+    </div>
   )
 }

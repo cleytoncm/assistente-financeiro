@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { listAccounts, type Account } from '../accounts/accountsApi'
 import { listCards, type Card } from '../cards/cardsApi'
 import { listCategories, type Category } from '../categories/categoriesApi'
 import { listTransactions, type Transaction } from '../transactions/transactionsApi'
 import { TransactionForm } from '../transactions/TransactionForm'
 import { TransactionRow } from '../transactions/TransactionRow'
+import { PageHeader, Card as UiCard, Field, Select, Input, Button, ItemList, EmptyState } from '../components/ui'
 
 const PAGE_SIZE = 10
 
@@ -57,112 +57,123 @@ export function TransactionsPage() {
   const hasPrevPage = offset > 0
 
   return (
-    <main>
-      <p>
-        <Link to="/">Voltar</Link>
-      </p>
-      <h1>Extrato</h1>
+    <div className="space-y-6">
+      <PageHeader backTo="/" title="Extrato" />
 
-      <TransactionForm onCreated={handleCreated} />
+      <UiCard>
+        <TransactionForm onCreated={handleCreated} />
+      </UiCard>
 
-      <section>
-        <h2>Filtros</h2>
-        <label htmlFor="filter-account">Conta</label>
-        <select
-          id="filter-account"
-          value={accountId}
-          onChange={(e) => {
-            setAccountId(e.target.value)
-            setCardId('')
-            setOffset(0)
-          }}
-        >
-          <option value="">Todas</option>
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name}
-            </option>
-          ))}
-        </select>
+      <UiCard>
+        <h2 className="mb-3">Filtros</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          <Field label="Conta" htmlFor="filter-account">
+            <Select
+              id="filter-account"
+              value={accountId}
+              onChange={(e) => {
+                setAccountId(e.target.value)
+                setCardId('')
+                setOffset(0)
+              }}
+            >
+              <option value="">Todas</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-        <label htmlFor="filter-card">Cartão</label>
-        <select
-          id="filter-card"
-          value={cardId}
-          onChange={(e) => {
-            setCardId(e.target.value)
-            setAccountId('')
-            setOffset(0)
-          }}
-        >
-          <option value="">Todos</option>
-          {cards.map((card) => (
-            <option key={card.id} value={card.id}>
-              {card.name}
-            </option>
-          ))}
-        </select>
+          <Field label="Cartão" htmlFor="filter-card">
+            <Select
+              id="filter-card"
+              value={cardId}
+              onChange={(e) => {
+                setCardId(e.target.value)
+                setAccountId('')
+                setOffset(0)
+              }}
+            >
+              <option value="">Todos</option>
+              {cards.map((card) => (
+                <option key={card.id} value={card.id}>
+                  {card.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-        <label htmlFor="filter-category">Categoria</label>
-        <select
-          id="filter-category"
-          value={categoryId}
-          onChange={(e) => {
-            setCategoryId(e.target.value)
-            setOffset(0)
-          }}
-        >
-          <option value="">Todas</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
+          <Field label="Categoria" htmlFor="filter-category">
+            <Select
+              id="filter-category"
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(e.target.value)
+                setOffset(0)
+              }}
+            >
+              <option value="">Todas</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-        <label htmlFor="filter-from">De</label>
-        <input
-          id="filter-from"
-          type="date"
-          value={from}
-          onChange={(e) => {
-            setFrom(e.target.value)
-            setOffset(0)
-          }}
-        />
-
-        <label htmlFor="filter-to">Até</label>
-        <input
-          id="filter-to"
-          type="date"
-          value={to}
-          onChange={(e) => {
-            setTo(e.target.value)
-            setOffset(0)
-          }}
-        />
-      </section>
-
-      <section>
-        <h2>Lançamentos</h2>
-        {items.length === 0 && <p>Nenhum lançamento encontrado.</p>}
-        <ul>
-          {items.map((transaction) => (
-            <TransactionRow
-              key={transaction.id}
-              transaction={transaction}
-              categories={categories}
-              onChanged={loadTransactions}
+          <Field label="De" htmlFor="filter-from">
+            <Input
+              id="filter-from"
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value)
+                setOffset(0)
+              }}
             />
-          ))}
-        </ul>
-        <button type="button" disabled={!hasPrevPage} onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}>
-          Anterior
-        </button>
-        <button type="button" disabled={!hasNextPage} onClick={() => setOffset((o) => o + PAGE_SIZE)}>
-          Próxima
-        </button>
+          </Field>
+
+          <Field label="Até" htmlFor="filter-to">
+            <Input
+              id="filter-to"
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value)
+                setOffset(0)
+              }}
+            />
+          </Field>
+        </div>
+      </UiCard>
+
+      <section>
+        <h2 className="mb-3">Lançamentos</h2>
+        {items.length === 0 ? (
+          <EmptyState>Nenhum lançamento encontrado.</EmptyState>
+        ) : (
+          <ItemList>
+            {items.map((transaction) => (
+              <TransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                categories={categories}
+                onChanged={loadTransactions}
+              />
+            ))}
+          </ItemList>
+        )}
+        <div className="mt-3 flex gap-2">
+          <Button type="button" disabled={!hasPrevPage} onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}>
+            Anterior
+          </Button>
+          <Button type="button" disabled={!hasNextPage} onClick={() => setOffset((o) => o + PAGE_SIZE)}>
+            Próxima
+          </Button>
+        </div>
       </section>
-    </main>
+    </div>
   )
 }

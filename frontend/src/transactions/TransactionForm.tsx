@@ -4,6 +4,7 @@ import { listCards, type Card } from '../cards/cardsApi'
 import { listCategories, type Category } from '../categories/categoriesApi'
 import { createTransaction, type CreateTransactionInput, type InvoicePaymentAdjustment } from './transactionsApi'
 import { ApiError } from '../lib/httpClient'
+import { Field, Input, Select, Button, Alert, ConfirmPanel } from '../components/ui'
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -94,110 +95,121 @@ export function TransactionForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Novo lançamento">
-      <label htmlFor="transaction-type">Tipo</label>
-      <select
-        id="transaction-type"
-        value={type}
-        onChange={(e) => {
-          setType(e.target.value as 'income' | 'expense')
-          setCategoryId('')
-        }}
-      >
-        <option value="expense">Despesa</option>
-        <option value="income">Receita</option>
-      </select>
+    <form onSubmit={handleSubmit} aria-label="Novo lançamento" className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Field label="Tipo" htmlFor="transaction-type">
+          <Select
+            id="transaction-type"
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value as 'income' | 'expense')
+              setCategoryId('')
+            }}
+          >
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+          </Select>
+        </Field>
 
-      <label htmlFor="transaction-amount">Valor {installments ? '(total)' : ''}</label>
-      <input
-        id="transaction-amount"
-        type="number"
-        step="0.01"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        required
-      />
-
-      <label htmlFor="transaction-date">Data</label>
-      <input id="transaction-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-
-      <label htmlFor="transaction-description">Descrição</label>
-      <input
-        id="transaction-description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        required
-      />
-
-      <label htmlFor="transaction-destination">Conta ou cartão</label>
-      <select
-        id="transaction-destination"
-        value={destination}
-        onChange={(e) => {
-          setDestination(e.target.value)
-          setInstallments('')
-        }}
-        required
-      >
-        <option value="">Selecione...</option>
-        <optgroup label="Contas">
-          {accounts.map((account) => (
-            <option key={account.id} value={`account:${account.id}`}>
-              {account.name}
-            </option>
-          ))}
-        </optgroup>
-        <optgroup label="Cartões">
-          {cards.map((card) => (
-            <option key={card.id} value={`card:${card.id}`}>
-              {card.name}
-            </option>
-          ))}
-        </optgroup>
-      </select>
-
-      <label htmlFor="transaction-category">Categoria (opcional)</label>
-      <select id="transaction-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-        <option value="">Sem categoria</option>
-        {filteredCategories.map((category) => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-
-      {isCardDestination && (
-        <>
-          <label htmlFor="transaction-installments">Parcelar em (opcional)</label>
-          <input
-            id="transaction-installments"
+        <Field label={`Valor ${installments ? '(total)' : ''}`} htmlFor="transaction-amount">
+          <Input
+            id="transaction-amount"
             type="number"
-            min={2}
-            value={installments}
-            onChange={(e) => setInstallments(e.target.value)}
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
           />
-        </>
-      )}
+        </Field>
 
-      {error && <p role="alert">{error}</p>}
+        <Field label="Data" htmlFor="transaction-date">
+          <Input id="transaction-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        </Field>
 
-      <button type="submit" disabled={isSubmitting}>
+        <Field label="Descrição" htmlFor="transaction-description">
+          <Input
+            id="transaction-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Field label="Conta ou cartão" htmlFor="transaction-destination">
+          <Select
+            id="transaction-destination"
+            value={destination}
+            onChange={(e) => {
+              setDestination(e.target.value)
+              setInstallments('')
+            }}
+            required
+          >
+            <option value="">Selecione...</option>
+            <optgroup label="Contas">
+              {accounts.map((account) => (
+                <option key={account.id} value={`account:${account.id}`}>
+                  {account.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Cartões">
+              {cards.map((card) => (
+                <option key={card.id} value={`card:${card.id}`}>
+                  {card.name}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        </Field>
+
+        <Field label="Categoria (opcional)" htmlFor="transaction-category">
+          <Select id="transaction-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Sem categoria</option>
+            {filteredCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        {isCardDestination && (
+          <Field label="Parcelar em (opcional)" htmlFor="transaction-installments">
+            <Input
+              id="transaction-installments"
+              type="number"
+              min={2}
+              value={installments}
+              onChange={(e) => setInstallments(e.target.value)}
+            />
+          </Field>
+        )}
+      </div>
+
+      {error && <Alert>{error}</Alert>}
+
+      <Button type="submit" variant="primary" disabled={isSubmitting}>
         {isSubmitting ? 'Lançando...' : 'Lançar'}
-      </button>
+      </Button>
 
       {pendingAdjustment && (
-        <section role="alertdialog" aria-label="Confirmar ajuste de fatura paga">
+        <ConfirmPanel aria-label="Confirmar ajuste de fatura paga">
           <p>
             A fatura desse cartão já está paga. O pagamento de R${pendingAdjustment.oldAmount} será
             atualizado para R${pendingAdjustment.newAmount}. Deseja continuar?
           </p>
-          <button type="button" onClick={confirmAdjustment} disabled={isSubmitting}>
-            Confirmar
-          </button>
-          <button type="button" onClick={cancelAdjustment}>
-            Cancelar
-          </button>
-        </section>
+          <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={confirmAdjustment} disabled={isSubmitting}>
+              Confirmar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancelAdjustment}>
+              Cancelar
+            </Button>
+          </div>
+        </ConfirmPanel>
       )}
     </form>
   )

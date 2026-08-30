@@ -3,6 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { loginRequest } from '../auth/authApi'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../lib/httpClient'
+import { AuthLayout } from '../components/AuthLayout'
+import { Field } from '../components/ui/Field'
+import { Input } from '../components/ui/Input'
+import { Button } from '../components/ui/Button'
+import { Alert } from '../components/ui/Alert'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -32,38 +37,38 @@ export function LoginPage() {
   }
 
   return (
-    <main>
-      <h1>Entrar</h1>
-      {justRegistered && <p>Conta criada com sucesso. Faça login para continuar.</p>}
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="email">E-mail</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+    <AuthLayout>
+      <h1 className="mb-4 text-xl">Entrar</h1>
+      {justRegistered && (
+        <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+          Conta criada com sucesso. Faça login para continuar.
+        </p>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="E-mail" htmlFor="email">
+          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </Field>
 
-        <label htmlFor="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <Field label="Senha" htmlFor="password">
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </Field>
 
-        {error && <p role="alert">{error}</p>}
+        {error && <Alert>{error}</Alert>}
 
-        <button type="submit" disabled={isSubmitting}>
+        <Button type="submit" variant="primary" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Entrando...' : 'Entrar'}
-        </button>
+        </Button>
       </form>
 
-      <p>
+      <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-400">
         Ainda não tem conta? <Link to="/cadastro">Criar conta</Link>
       </p>
-    </main>
+    </AuthLayout>
   )
 }

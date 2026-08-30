@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Account } from '../accounts/accountsApi'
 import { createCard, type Card } from './cardsApi'
 import { ApiError } from '../lib/httpClient'
+import { Field, Input, Select, Button, Alert } from '../components/ui'
 
 export function CardForm({
   accounts,
@@ -42,61 +43,68 @@ export function CardForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Novo cartão">
-      <label htmlFor="card-name">Nome do cartão</label>
-      <input id="card-name" value={name} onChange={(e) => setName(e.target.value)} required />
+    <form onSubmit={handleSubmit} aria-label="Novo cartão" className="space-y-4">
+      <Field label="Nome do cartão" htmlFor="card-name">
+        <Input id="card-name" value={name} onChange={(e) => setName(e.target.value)} required />
+      </Field>
 
-      <label htmlFor="card-limit">Limite</label>
-      <input
-        id="card-limit"
-        type="number"
-        step="0.01"
-        value={creditLimit}
-        onChange={(e) => setCreditLimit(e.target.value)}
-        required
-      />
+      <Field label="Limite" htmlFor="card-limit">
+        <Input
+          id="card-limit"
+          type="number"
+          step="0.01"
+          value={creditLimit}
+          onChange={(e) => setCreditLimit(e.target.value)}
+          required
+        />
+      </Field>
 
-      <label htmlFor="card-closing-day">Dia de fechamento</label>
-      <input
-        id="card-closing-day"
-        type="number"
-        min={1}
-        max={31}
-        value={closingDay}
-        onChange={(e) => setClosingDay(e.target.value)}
-        required
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Dia de fechamento" htmlFor="card-closing-day">
+          <Input
+            id="card-closing-day"
+            type="number"
+            min={1}
+            max={31}
+            value={closingDay}
+            onChange={(e) => setClosingDay(e.target.value)}
+            required
+          />
+        </Field>
 
-      <label htmlFor="card-due-day">Dia de vencimento</label>
-      <input
-        id="card-due-day"
-        type="number"
-        min={1}
-        max={31}
-        value={dueDay}
-        onChange={(e) => setDueDay(e.target.value)}
-        required
-      />
+        <Field label="Dia de vencimento" htmlFor="card-due-day">
+          <Input
+            id="card-due-day"
+            type="number"
+            min={1}
+            max={31}
+            value={dueDay}
+            onChange={(e) => setDueDay(e.target.value)}
+            required
+          />
+        </Field>
+      </div>
 
-      <label htmlFor="card-linked-account">Conta vinculada (opcional)</label>
-      <select
-        id="card-linked-account"
-        value={linkedAccountId}
-        onChange={(e) => setLinkedAccountId(e.target.value)}
-      >
-        <option value="">Sem vínculo</option>
-        {accounts.map((account) => (
-          <option key={account.id} value={account.id}>
-            {account.name}
-          </option>
-        ))}
-      </select>
+      <Field label="Conta vinculada (opcional)" htmlFor="card-linked-account">
+        <Select
+          id="card-linked-account"
+          value={linkedAccountId}
+          onChange={(e) => setLinkedAccountId(e.target.value)}
+        >
+          <option value="">Sem vínculo</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
 
-      {error && <p role="alert">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
-      <button type="submit" disabled={isSubmitting}>
+      <Button type="submit" variant="primary" disabled={isSubmitting}>
         {isSubmitting ? 'Criando...' : 'Criar cartão'}
-      </button>
+      </Button>
     </form>
   )
 }

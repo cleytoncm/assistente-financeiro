@@ -59,7 +59,7 @@ test('lança compra no cartão, vê a fatura gerada e paga debitando a conta vin
 
   await page.getByRole('button', { name: /Pagar fatura/ }).click()
   await expect(page.getByText('Fatura paga.')).toBeVisible()
-  await expect(page.getByText(/Status: Paga/)).toBeVisible()
+  await expect(page.getByText('Paga', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('link', { name: 'Voltar' }).click()

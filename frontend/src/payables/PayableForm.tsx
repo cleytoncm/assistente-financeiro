@@ -3,6 +3,7 @@ import { listAccounts, type Account } from '../accounts/accountsApi'
 import { createPayable } from './payablesApi'
 import { createPayableGroup } from './payableGroupsApi'
 import { ApiError } from '../lib/httpClient'
+import { Field, Input, Select, Button, Alert } from '../components/ui'
 
 type Mode = 'avulsa' | 'parcelada' | 'recorrente'
 
@@ -75,99 +76,111 @@ export function PayableForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Nova conta a pagar/receber">
-      <label htmlFor="payable-mode">Modo</label>
-      <select id="payable-mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-        <option value="avulsa">Avulsa</option>
-        <option value="parcelada">Parcelada</option>
-        <option value="recorrente">Recorrente</option>
-      </select>
+    <form onSubmit={handleSubmit} aria-label="Nova conta a pagar/receber" className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <Field label="Modo" htmlFor="payable-mode">
+          <Select id="payable-mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+            <option value="avulsa">Avulsa</option>
+            <option value="parcelada">Parcelada</option>
+            <option value="recorrente">Recorrente</option>
+          </Select>
+        </Field>
 
-      <label htmlFor="payable-type">Tipo</label>
-      <select id="payable-type" value={type} onChange={(e) => setType(e.target.value as 'income' | 'expense')}>
-        <option value="expense">A pagar</option>
-        <option value="income">A receber</option>
-      </select>
+        <Field label="Tipo" htmlFor="payable-type">
+          <Select id="payable-type" value={type} onChange={(e) => setType(e.target.value as 'income' | 'expense')}>
+            <option value="expense">A pagar</option>
+            <option value="income">A receber</option>
+          </Select>
+        </Field>
 
-      <label htmlFor="payable-amount">Valor {mode !== 'avulsa' ? '(por parcela)' : ''}</label>
-      <input
-        id="payable-amount"
-        type="number"
-        step="0.01"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        required
-      />
-
-      {mode === 'avulsa' ? (
-        <>
-          <label htmlFor="payable-due-date">Vencimento</label>
-          <input
-            id="payable-due-date"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            required
-          />
-        </>
-      ) : (
-        <>
-          <label htmlFor="payable-start-date">Primeiro vencimento</label>
-          <input
-            id="payable-start-date"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
-          />
-          <label htmlFor="payable-due-day">Dia de vencimento</label>
-          <input
-            id="payable-due-day"
+        <Field label={`Valor ${mode !== 'avulsa' ? '(por parcela)' : ''}`} htmlFor="payable-amount">
+          <Input
+            id="payable-amount"
             type="number"
-            min={1}
-            max={31}
-            value={dueDay}
-            onChange={(e) => setDueDay(e.target.value)}
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
             required
           />
-        </>
-      )}
+        </Field>
+      </div>
 
-      {mode === 'parcelada' && (
-        <>
-          <label htmlFor="payable-installment-count">Quantidade de parcelas</label>
-          <input
-            id="payable-installment-count"
-            type="number"
-            min={2}
-            value={installmentCount}
-            onChange={(e) => setInstallmentCount(e.target.value)}
-            required
-          />
-        </>
-      )}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {mode === 'avulsa' ? (
+          <Field label="Vencimento" htmlFor="payable-due-date">
+            <Input
+              id="payable-due-date"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              required
+            />
+          </Field>
+        ) : (
+          <>
+            <Field label="Primeiro vencimento" htmlFor="payable-start-date">
+              <Input
+                id="payable-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+              />
+            </Field>
+            <Field label="Dia de vencimento" htmlFor="payable-due-day">
+              <Input
+                id="payable-due-day"
+                type="number"
+                min={1}
+                max={31}
+                value={dueDay}
+                onChange={(e) => setDueDay(e.target.value)}
+                required
+              />
+            </Field>
+          </>
+        )}
 
-      <label htmlFor="payable-description">Descrição (opcional)</label>
-      <input id="payable-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        {mode === 'parcelada' && (
+          <Field label="Quantidade de parcelas" htmlFor="payable-installment-count">
+            <Input
+              id="payable-installment-count"
+              type="number"
+              min={2}
+              value={installmentCount}
+              onChange={(e) => setInstallmentCount(e.target.value)}
+              required
+            />
+          </Field>
+        )}
+      </div>
 
-      <label htmlFor="payable-counterparty">Contraparte (opcional)</label>
-      <input id="payable-counterparty" value={counterparty} onChange={(e) => setCounterparty(e.target.value)} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Field label="Descrição (opcional)" htmlFor="payable-description">
+          <Input id="payable-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </Field>
 
-      <label htmlFor="payable-account">Conta sugerida (opcional)</label>
-      <select id="payable-account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-        <option value="">Nenhuma</option>
-        {accounts.map((account) => (
-          <option key={account.id} value={account.id}>
-            {account.name}
-          </option>
-        ))}
-      </select>
+        <Field label="Contraparte (opcional)" htmlFor="payable-counterparty">
+          <Input id="payable-counterparty" value={counterparty} onChange={(e) => setCounterparty(e.target.value)} />
+        </Field>
 
-      {error && <p role="alert">{error}</p>}
+        <Field label="Conta sugerida (opcional)" htmlFor="payable-account">
+          <Select id="payable-account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+            <option value="">Nenhuma</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
 
-      <button type="submit" disabled={isSubmitting}>
+      {error && <Alert>{error}</Alert>}
+
+      <Button type="submit" variant="primary" disabled={isSubmitting}>
         {isSubmitting ? 'Cadastrando...' : 'Cadastrar'}
-      </button>
+      </Button>
     </form>
   )
 }

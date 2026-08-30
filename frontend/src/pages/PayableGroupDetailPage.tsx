@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { listAccounts, type Account } from '../accounts/accountsApi'
 import {
   getPayableGroup,
@@ -9,6 +9,17 @@ import {
 } from '../payables/payableGroupsApi'
 import { PayableRow } from '../payables/PayableRow'
 import { ApiError } from '../lib/httpClient'
+import {
+  PageHeader,
+  Card as UiCard,
+  Field,
+  Input,
+  Select,
+  Button,
+  Alert,
+  ConfirmPanel,
+  ItemList,
+} from '../components/ui'
 
 export function PayableGroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>()
@@ -82,99 +93,120 @@ export function PayableGroupDetailPage() {
 
   if (!group) {
     return (
-      <main>
-        <p>Carregando...</p>
-      </main>
+      <div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
+      </div>
     )
   }
 
   return (
-    <main>
-      <p>
-        <Link to="/contas-a-pagar">Voltar</Link>
-      </p>
-      <h1>{group.description ?? (group.type === 'expense' ? 'A pagar' : 'A receber')}</h1>
-      <p>{group.counterparty && `Contraparte: ${group.counterparty}`}</p>
+    <div className="space-y-6">
+      <PageHeader
+        backTo="/contas-a-pagar"
+        title={group.description ?? (group.type === 'expense' ? 'A pagar' : 'A receber')}
+      />
+      {group.counterparty && (
+        <p className="-mt-4 text-sm text-slate-500 dark:text-slate-400">Contraparte: {group.counterparty}</p>
+      )}
 
-      <section>
-        <h2>Editar grupo</h2>
-        <p>Atenção: alterar esses dados afeta todas as parcelas ainda não pagas nem canceladas.</p>
-        <form onSubmit={handleEditSubmit} aria-label="Editar grupo">
-          <label htmlFor="group-amount">Valor por parcela</label>
-          <input
-            id="group-amount"
-            type="number"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <label htmlFor="group-due-day">Dia de vencimento</label>
-          <input
-            id="group-due-day"
-            type="number"
-            min={1}
-            max={31}
-            value={dueDay}
-            onChange={(e) => setDueDay(e.target.value)}
-          />
-          <label htmlFor="group-description">Descrição</label>
-          <input id="group-description" value={description} onChange={(e) => setDescription(e.target.value)} />
-          <label htmlFor="group-counterparty">Contraparte</label>
-          <input id="group-counterparty" value={counterparty} onChange={(e) => setCounterparty(e.target.value)} />
-          <label htmlFor="group-account">Conta sugerida</label>
-          <select id="group-account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            <option value="">Nenhuma</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-          <button type="submit">Salvar alterações</button>
-          {editError && <p role="alert">{editError}</p>}
+      <UiCard>
+        <h2 className="mb-1">Editar grupo</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Atenção: alterar esses dados afeta todas as parcelas ainda não pagas nem canceladas.
+        </p>
+        <form onSubmit={handleEditSubmit} aria-label="Editar grupo" className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Field label="Valor por parcela" htmlFor="group-amount">
+              <Input
+                id="group-amount"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </Field>
+            <Field label="Dia de vencimento" htmlFor="group-due-day">
+              <Input
+                id="group-due-day"
+                type="number"
+                min={1}
+                max={31}
+                value={dueDay}
+                onChange={(e) => setDueDay(e.target.value)}
+              />
+            </Field>
+            <Field label="Descrição" htmlFor="group-description">
+              <Input id="group-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            </Field>
+            <Field label="Contraparte" htmlFor="group-counterparty">
+              <Input
+                id="group-counterparty"
+                value={counterparty}
+                onChange={(e) => setCounterparty(e.target.value)}
+              />
+            </Field>
+          </div>
+          <Field label="Conta sugerida" htmlFor="group-account">
+            <Select id="group-account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              <option value="">Nenhuma</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Button type="submit" variant="primary">
+            Salvar alterações
+          </Button>
+          {editError && <Alert>{editError}</Alert>}
         </form>
-      </section>
+      </UiCard>
 
-      <section>
-        <h2>Encerrar grupo</h2>
-        <label htmlFor="close-scope">Escopo</label>
-        <select id="close-scope" value={closeScope} onChange={(e) => setCloseScope(e.target.value as 'pending' | 'all')}>
-          <option value="pending">Só as pendentes</option>
-          <option value="all">Tudo (inclusive pagas)</option>
-        </select>
-        <button type="button" onClick={() => handleClose(false)}>
-          Encerrar grupo
-        </button>
-        {closeError && <p role="alert">{closeError}</p>}
+      <UiCard>
+        <h2 className="mb-3">Encerrar grupo</h2>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Escopo" htmlFor="close-scope">
+            <Select
+              id="close-scope"
+              value={closeScope}
+              onChange={(e) => setCloseScope(e.target.value as 'pending' | 'all')}
+            >
+              <option value="pending">Só as pendentes</option>
+              <option value="all">Tudo (inclusive pagas)</option>
+            </Select>
+          </Field>
+          <Button type="button" variant="danger" onClick={() => handleClose(false)}>
+            Encerrar grupo
+          </Button>
+        </div>
+        {closeError && <Alert className="mt-3">{closeError}</Alert>}
         {closeConfirmation && (
-          <section role="alertdialog" aria-label="Confirmar exclusão de parcelas pagas">
+          <ConfirmPanel aria-label="Confirmar exclusão de parcelas pagas" className="mt-3">
             <p>
               Este grupo tem {closeConfirmation.deletePaidCount} parcela(s) paga(s). Excluir tudo também removerá as
               transações vinculadas a elas. Deseja continuar?
             </p>
-            <button type="button" onClick={() => handleClose(true)}>
-              Confirmar
-            </button>
-            <button type="button" onClick={() => setCloseConfirmation(null)}>
-              Voltar
-            </button>
-          </section>
+            <div className="flex gap-2">
+              <Button size="sm" variant="primary" onClick={() => handleClose(true)}>
+                Confirmar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setCloseConfirmation(null)}>
+                Voltar
+              </Button>
+            </div>
+          </ConfirmPanel>
         )}
-      </section>
+      </UiCard>
 
       <section>
-        <h2>Parcelas</h2>
-        <ul>
+        <h2 className="mb-3">Parcelas</h2>
+        <ItemList>
           {group.payables.map((payable) => (
-            <PayableRow
-              key={payable.id}
-              payable={payable}
-              accounts={accounts}
-              onChanged={() => load(group.id)}
-            />
+            <PayableRow key={payable.id} payable={payable} accounts={accounts} onChanged={() => load(group.id)} />
           ))}
-        </ul>
+        </ItemList>
       </section>
-    </main>
+    </div>
   )
 }

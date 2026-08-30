@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { listCategories, type Category } from '../categories/categoriesApi'
 import {
   getImportBatch,
@@ -11,6 +11,17 @@ import {
   type ImportedRow,
 } from '../imports/importsApi'
 import { ApiError } from '../lib/httpClient'
+import {
+  PageHeader,
+  Card as UiCard,
+  Input,
+  Select,
+  Button,
+  Badge,
+  Alert,
+  ItemList,
+  ItemRow,
+} from '../components/ui'
 
 const FORMAT_LABELS: Record<ImportBatch['format'], string> = {
   ofx: 'OFX',
@@ -61,70 +72,81 @@ function ImportedRowEditor({
   }
 
   return (
-    <li>
-      {row.date.slice(0, 10)} —{' '}
-      {isPending ? (
-        <input
-          aria-label={`Descrição de ${row.description}`}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      ) : (
-        row.description
-      )}{' '}
-      —{' '}
-      {isPending ? (
-        <input
-          aria-label={`Valor de ${row.description}`}
-          type="number"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      ) : (
-        <>
-          {row.type === 'expense' ? '-' : '+'}
-          {row.amount}
-        </>
-      )}
+    <ItemRow className="flex-col items-stretch gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-slate-500 dark:text-slate-400">{row.date.slice(0, 10)}</span>
+        {isPending ? (
+          <Input
+            aria-label={`Descrição de ${row.description}`}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="max-w-xs"
+          />
+        ) : (
+          <span className="font-medium text-slate-900 dark:text-slate-50">{row.description}</span>
+        )}
+        {isPending ? (
+          <Input
+            aria-label={`Valor de ${row.description}`}
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="max-w-28"
+          />
+        ) : (
+          <span
+            className={
+              row.type === 'expense'
+                ? 'font-semibold tabular-nums text-red-600 dark:text-red-400'
+                : 'font-semibold tabular-nums text-emerald-600 dark:text-emerald-400'
+            }
+          >
+            {row.type === 'expense' ? '-' : '+'}
+            {row.amount}
+          </span>
+        )}
+        {isPending && (
+          <Select
+            aria-label={`Tipo de ${row.description}`}
+            value={type}
+            onChange={(e) => setType(e.target.value as 'income' | 'expense')}
+            className="w-auto"
+          >
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+          </Select>
+        )}
+        {isPending && (
+          <Select
+            aria-label={`Categoria de ${row.description}`}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-auto"
+          >
+            <option value="">Sem categoria</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+        )}
+        {row.isDuplicateSuspect && <Badge tone="amber">possível duplicata</Badge>}
+        {!isPending && <Badge tone="slate">{row.resolution}</Badge>}
+      </div>
       {isPending && (
-        <select
-          aria-label={`Tipo de ${row.description}`}
-          value={type}
-          onChange={(e) => setType(e.target.value as 'income' | 'expense')}
-        >
-          <option value="expense">Despesa</option>
-          <option value="income">Receita</option>
-        </select>
-      )}
-      {isPending && (
-        <select
-          aria-label={`Categoria de ${row.description}`}
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          <option value="">Sem categoria</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      )}
-      {row.isDuplicateSuspect && ' — possível duplicata'}
-      {!isPending && ` — ${row.resolution}`}
-      {isPending && (
-        <>
-          <button type="button" onClick={handleSave}>
+        <div className="flex gap-2">
+          <Button size="sm" variant="primary" onClick={handleSave}>
             Salvar
-          </button>
-          <button type="button" onClick={handleDiscard}>
+          </Button>
+          <Button size="sm" onClick={handleDiscard}>
             Descartar
-          </button>
-        </>
+          </Button>
+        </div>
       )}
-      {error && <p role="alert">{error}</p>}
-    </li>
+      {error && <Alert>{error}</Alert>}
+    </ItemRow>
   )
 }
 
@@ -168,9 +190,9 @@ export function ImportBatchDetailPage() {
 
   if (!batch) {
     return (
-      <main>
-        <p>Carregando...</p>
-      </main>
+      <div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
+      </div>
     )
   }
 
@@ -178,45 +200,47 @@ export function ImportBatchDetailPage() {
   const pendingRows = rows.filter((r) => r.resolution === 'pendente')
 
   return (
-    <main>
-      <p>
-        <Link to="/importacoes">Voltar</Link>
-      </p>
-      <h1>Importação {FORMAT_LABELS[batch.format]}</h1>
+    <div className="space-y-6">
+      <PageHeader backTo="/importacoes" title={`Importação ${FORMAT_LABELS[batch.format]}`} />
 
-      {batch.status === 'processando' && <p>Processando arquivo...</p>}
+      {batch.status === 'processando' && (
+        <UiCard>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Processando arquivo...</p>
+        </UiCard>
+      )}
 
       {batch.status === 'falhou' && (
-        <p role="alert">
+        <Alert>
           Não foi possível processar o arquivo: {batch.errorMessage}. Tente exportar em outro formato.
-        </p>
+        </Alert>
       )}
 
       {(batch.status === 'aguardando_revisao' || batch.status === 'concluido') && (
-        <p>{acceptedCount} lançamento(s) já aceito(s) automaticamente.</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {acceptedCount} lançamento(s) já aceito(s) automaticamente.
+        </p>
       )}
 
       {batch.status === 'aguardando_revisao' && (
         <section>
-          <h2>Revisão</h2>
-          <ul>
+          <h2 className="mb-3">Revisão</h2>
+          <ItemList className="mb-4">
             {pendingRows.map((row) => (
-              <ImportedRowEditor
-                key={row.id}
-                row={row}
-                categories={categories}
-                onChanged={() => load(batch.id)}
-              />
+              <ImportedRowEditor key={row.id} row={row} categories={categories} onChanged={() => load(batch.id)} />
             ))}
-          </ul>
-          <button type="button" onClick={handleConfirm}>
+          </ItemList>
+          <Button variant="primary" onClick={handleConfirm}>
             Confirmar importação
-          </button>
-          {confirmError && <p role="alert">{confirmError}</p>}
+          </Button>
+          {confirmError && <Alert className="mt-3">{confirmError}</Alert>}
         </section>
       )}
 
-      {batch.status === 'concluido' && <p>Importação concluída.</p>}
-    </main>
+      {batch.status === 'concluido' && (
+        <UiCard>
+          <p className="text-sm text-emerald-700 dark:text-emerald-400">Importação concluída.</p>
+        </UiCard>
+      )}
+    </div>
   )
 }

@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ComponentProps, type FormEvent } from 'react'
 import type { Account } from '../accounts/accountsApi'
 import { payPayable, cancelPayable, deletePayable, type Payable } from './payablesApi'
 import { ApiError } from '../lib/httpClient'
+import { ItemRow, Field, Input, Select, Button, Badge, Alert, ConfirmPanel } from '../components/ui'
 
 const STATUS_LABELS: Record<Payable['status'], string> = {
   pendente: 'Pendente',
@@ -9,6 +10,14 @@ const STATUS_LABELS: Record<Payable['status'], string> = {
   atrasada: 'Atrasada',
   paga: 'Paga',
   cancelada: 'Cancelada',
+}
+
+const STATUS_TONES: Record<Payable['status'], ComponentProps<typeof Badge>['tone']> = {
+  pendente: 'slate',
+  vence_hoje: 'amber',
+  atrasada: 'red',
+  paga: 'green',
+  cancelada: 'slate',
 }
 
 type DeleteConfirmation = { amount: string; date: string } | null
@@ -84,95 +93,140 @@ export function PayableRow({
   }
 
   return (
-    <li>
-      {payable.dueDate.slice(0, 10)} — {payable.description ?? 'Sem descrição'} —{' '}
-      {payable.type === 'expense' ? '-' : '+'}
-      {payable.amount} — {STATUS_LABELS[payable.status]}
-      {payable.counterparty && ` — ${payable.counterparty}`}
-      {payable.installmentNumber && ` — parcela ${payable.installmentNumber}`}
-      {payable.cancellationReason && ` — motivo: ${payable.cancellationReason}`}
-      {!isFinal && (
-        <button type="button" onClick={() => setIsPaying((v) => !v)}>
-          Pagar
-        </button>
-      )}
-      {payable.status !== 'cancelada' && (
-        <button type="button" onClick={() => setIsCancelling((v) => !v)}>
-          Cancelar
-        </button>
-      )}
-      <button type="button" onClick={() => handleDelete(false)}>
-        Excluir
-      </button>
-      {error && <p role="alert">{error}</p>}
-      {isPaying && (
-        <form onSubmit={handlePay} aria-label={`Pagar ${payable.description ?? payable.id}`}>
-          <label htmlFor={`payable-account-${payable.id}`}>Conta</label>
-          <select
-            id={`payable-account-${payable.id}`}
-            value={paymentAccountId}
-            onChange={(e) => setPaymentAccountId(e.target.value)}
-            required
+    <ItemRow className="flex-col items-stretch gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-medium text-slate-900 dark:text-slate-50">
+            {payable.description ?? 'Sem descrição'}
+            {payable.installmentNumber && (
+              <Badge tone="slate" className="ml-2">
+                parcela {payable.installmentNumber}
+              </Badge>
+            )}
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {payable.dueDate.slice(0, 10)}
+            {payable.counterparty && ` — ${payable.counterparty}`}
+            {payable.cancellationReason && ` — motivo: ${payable.cancellationReason}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge tone={STATUS_TONES[payable.status]}>{STATUS_LABELS[payable.status]}</Badge>
+          <span
+            className={
+              payable.type === 'expense'
+                ? 'font-semibold tabular-nums text-red-600 dark:text-red-400'
+                : 'font-semibold tabular-nums text-emerald-600 dark:text-emerald-400'
+            }
           >
-            <option value="">Selecione...</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-          <label htmlFor={`payable-paid-amount-${payable.id}`}>Valor pago</label>
-          <input
-            id={`payable-paid-amount-${payable.id}`}
-            type="number"
-            step="0.01"
-            value={paidAmount}
-            onChange={(e) => setPaidAmount(e.target.value)}
-          />
-          <button type="submit">Confirmar pagamento</button>
+            {payable.type === 'expense' ? '-' : '+'}
+            {payable.amount}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {!isFinal && (
+          <Button size="sm" onClick={() => setIsPaying((v) => !v)}>
+            Pagar
+          </Button>
+        )}
+        {payable.status !== 'cancelada' && (
+          <Button size="sm" onClick={() => setIsCancelling((v) => !v)}>
+            Cancelar
+          </Button>
+        )}
+        <Button size="sm" variant="danger" onClick={() => handleDelete(false)}>
+          Excluir
+        </Button>
+      </div>
+
+      {error && <Alert>{error}</Alert>}
+
+      {isPaying && (
+        <form
+          onSubmit={handlePay}
+          aria-label={`Pagar ${payable.description ?? payable.id}`}
+          className="flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50"
+        >
+          <Field label="Conta" htmlFor={`payable-account-${payable.id}`}>
+            <Select
+              id={`payable-account-${payable.id}`}
+              value={paymentAccountId}
+              onChange={(e) => setPaymentAccountId(e.target.value)}
+              required
+            >
+              <option value="">Selecione...</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Valor pago" htmlFor={`payable-paid-amount-${payable.id}`}>
+            <Input
+              id={`payable-paid-amount-${payable.id}`}
+              type="number"
+              step="0.01"
+              value={paidAmount}
+              onChange={(e) => setPaidAmount(e.target.value)}
+            />
+          </Field>
+          <Button type="submit" variant="primary" size="sm">
+            Confirmar pagamento
+          </Button>
         </form>
       )}
+
       {isCancelling && !cancelConfirmation && (
-        <div>
-          <label htmlFor={`payable-cancel-reason-${payable.id}`}>Motivo (opcional)</label>
-          <input
-            id={`payable-cancel-reason-${payable.id}`}
-            value={cancellationReason}
-            onChange={(e) => setCancellationReason(e.target.value)}
-          />
-          <button type="button" onClick={() => handleCancel(false)}>
+        <div className="flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+          <Field label="Motivo (opcional)" htmlFor={`payable-cancel-reason-${payable.id}`}>
+            <Input
+              id={`payable-cancel-reason-${payable.id}`}
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+            />
+          </Field>
+          <Button size="sm" variant="primary" onClick={() => handleCancel(false)}>
             Confirmar cancelamento
-          </button>
+          </Button>
         </div>
       )}
+
       {cancelConfirmation && (
-        <section role="alertdialog" aria-label="Confirmar cancelamento de parcela paga">
+        <ConfirmPanel aria-label="Confirmar cancelamento de parcela paga">
           <p>
             Esta parcela já está paga (transação de {cancelConfirmation.amount} em{' '}
             {cancelConfirmation.date.slice(0, 10)}). Cancelar também removerá essa transação. Deseja continuar?
           </p>
-          <button type="button" onClick={() => handleCancel(true)}>
-            Confirmar
-          </button>
-          <button type="button" onClick={() => setCancelConfirmation(null)}>
-            Voltar
-          </button>
-        </section>
+          <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={() => handleCancel(true)}>
+              Confirmar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setCancelConfirmation(null)}>
+              Voltar
+            </Button>
+          </div>
+        </ConfirmPanel>
       )}
+
       {deleteConfirmation && (
-        <section role="alertdialog" aria-label="Confirmar exclusão de parcela paga">
+        <ConfirmPanel aria-label="Confirmar exclusão de parcela paga">
           <p>
             Esta parcela já está paga (transação de {deleteConfirmation.amount} em{' '}
             {deleteConfirmation.date.slice(0, 10)}). Excluir também removerá essa transação. Deseja continuar?
           </p>
-          <button type="button" onClick={() => handleDelete(true)}>
-            Confirmar exclusão
-          </button>
-          <button type="button" onClick={() => setDeleteConfirmation(null)}>
-            Voltar
-          </button>
-        </section>
+          <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={() => handleDelete(true)}>
+              Confirmar exclusão
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDeleteConfirmation(null)}>
+              Voltar
+            </Button>
+          </div>
+        </ConfirmPanel>
       )}
-    </li>
+    </ItemRow>
   )
 }

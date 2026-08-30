@@ -93,6 +93,6 @@ describe('InvoiceDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Pagar fatura (40)' }))
 
     expect(await screen.findByText('Fatura paga.')).toBeInTheDocument()
-    expect(screen.getByText(/Status: Paga/)).toBeInTheDocument()
+    expect(screen.getByText('Paga')).toBeInTheDocument()
   })
 })

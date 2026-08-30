@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { meRequest, type PublicUser } from '../auth/authApi'
-import { useAuth } from '../auth/AuthContext'
+import { Card } from '../components/ui/Card'
 
 export function HomePage() {
-  const { logout } = useAuth()
   const [user, setUser] = useState<PublicUser | null>(null)
 
   useEffect(() => {
@@ -12,28 +10,22 @@ export function HomePage() {
   }, [])
 
   return (
-    <main>
-      <h1>Assistente Financeiro</h1>
-      {user && (
-        <p>
-          Olá, {user.name} ({user.email})
+    <div className="space-y-6">
+      <div>
+        <h1>Assistente Financeiro</h1>
+        {user && (
+          <p className="mt-1 text-slate-600 dark:text-slate-400">
+            Olá, {user.name} ({user.email})
+          </p>
+        )}
+      </div>
+
+      <Card>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Use o menu no topo para gerenciar suas contas e cartões, registrar lançamentos,
+          acompanhar contas a pagar/receber e importar extratos ou faturas.
         </p>
-      )}
-      <p>
-        <Link to="/contas">Contas e Cartões</Link>
-      </p>
-      <p>
-        <Link to="/lancamentos">Lançamentos</Link>
-      </p>
-      <p>
-        <Link to="/contas-a-pagar">Contas a Pagar/Receber</Link>
-      </p>
-      <p>
-        <Link to="/importacoes">Importações</Link>
-      </p>
-      <button type="button" onClick={logout}>
-        Sair
-      </button>
-    </main>
+      </Card>
+    </div>
   )
 }

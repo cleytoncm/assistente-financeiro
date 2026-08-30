@@ -10,6 +10,17 @@ import { listCards, deleteCard, updateCardStatus, type Card } from '../cards/car
 import { AccountForm } from '../accounts/AccountForm'
 import { CardForm } from '../cards/CardForm'
 import { ApiError } from '../lib/httpClient'
+import {
+  PageHeader,
+  Card as UiCard,
+  Input,
+  Button,
+  Badge,
+  ConfirmPanel,
+  ItemList,
+  ItemRow,
+  EmptyState,
+} from '../components/ui'
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -84,100 +95,158 @@ export function AccountsPage() {
   }
 
   return (
-    <main>
-      <p>
-        <Link to="/">Voltar</Link>
-      </p>
-      <h1>Contas e Cartões</h1>
+    <div>
+      <PageHeader backTo="/" title="Contas e Cartões" />
 
-      <section>
-        <label htmlFor="balance-date">Saldo/gasto em</label>
-        <input id="balance-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <label>
+      <UiCard className="mb-6 flex flex-wrap items-end gap-4">
+        <div>
+          <label htmlFor="balance-date" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Saldo/gasto em
+          </label>
+          <Input id="balance-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <label className="flex items-center gap-2 pb-2 text-sm text-slate-700 dark:text-slate-300">
           <input
             type="checkbox"
             checked={includeHidden}
             onChange={(e) => setIncludeHidden(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-slate-600"
           />
           Mostrar ocultas
         </label>
-      </section>
+      </UiCard>
 
       {removalTarget && (
-        <section role="alertdialog" aria-label="Confirmar remoção">
+        <ConfirmPanel aria-label="Confirmar remoção" className="mb-6">
           <p>
-            "{removalTarget.name}" tem lançamentos associados. Excluir em cascata é definitivo e
-            irreversível — remove também todo o histórico. Escolha uma opção:
+            &ldquo;{removalTarget.name}&rdquo; tem lançamentos associados. Excluir em cascata é
+            definitivo e irreversível — remove também todo o histórico. Escolha uma opção:
           </p>
-          <button type="button" onClick={() => resolveRemoval('deactivate')}>
-            Desativar
-          </button>
-          <button type="button" onClick={() => resolveRemoval('hide')}>
-            Ocultar
-          </button>
-          <button type="button" onClick={() => resolveRemoval('cascade')}>
-            Excluir em cascata (irreversível)
-          </button>
-          <button type="button" onClick={() => setRemovalTarget(null)}>
-            Cancelar
-          </button>
-        </section>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => resolveRemoval('deactivate')}>
+              Desativar
+            </Button>
+            <Button size="sm" onClick={() => resolveRemoval('hide')}>
+              Ocultar
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => resolveRemoval('cascade')}>
+              Excluir em cascata (irreversível)
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setRemovalTarget(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </ConfirmPanel>
       )}
 
-      <section>
-        <h2>Contas</h2>
-        {loaded && accounts.length === 0 && <p>Nenhuma conta cadastrada.</p>}
-        <ul>
-          {accounts.map((account) => (
-            <li key={account.id}>
-              {account.name} — {account.bank?.name} ({account.currency}) — saldo {account.currentBalance}
-              {' '}— previsto {account.projectedBalance}
-              {!account.isActive && ' — inativa'}
-              {account.isHidden && ' — oculta'}
-              <button type="button" onClick={() => toggleAccountFlag(account, 'isActive')}>
-                {account.isActive ? 'Desativar' : 'Ativar'}
-              </button>
-              <button type="button" onClick={() => toggleAccountFlag(account, 'isHidden')}>
-                {account.isHidden ? 'Reexibir' : 'Ocultar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => attemptDelete({ kind: 'account', id: account.id, name: account.name })}
-              >
-                Remover
-              </button>
-            </li>
-          ))}
-        </ul>
-        <AccountForm onCreated={() => loadAll()} />
+      <section className="mb-8">
+        <h2 className="mb-3">Contas</h2>
+        {loaded && accounts.length === 0 ? (
+          <EmptyState>Nenhuma conta cadastrada.</EmptyState>
+        ) : (
+          <ItemList className="mb-4">
+            {accounts.map((account) => (
+              <ItemRow key={account.id}>
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-slate-50">
+                    {account.name}
+                    {!account.isActive && (
+                      <Badge tone="slate" className="ml-2">
+                        inativa
+                      </Badge>
+                    )}
+                    {account.isHidden && (
+                      <Badge tone="slate" className="ml-2">
+                        oculta
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {account.bank?.name} ({account.currency}) — saldo {account.currentBalance} — previsto{' '}
+                    {account.projectedBalance}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => toggleAccountFlag(account, 'isActive')}>
+                    {account.isActive ? 'Desativar' : 'Ativar'}
+                  </Button>
+                  <Button size="sm" onClick={() => toggleAccountFlag(account, 'isHidden')}>
+                    {account.isHidden ? 'Reexibir' : 'Ocultar'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => attemptDelete({ kind: 'account', id: account.id, name: account.name })}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              </ItemRow>
+            ))}
+          </ItemList>
+        )}
+        <UiCard>
+          <AccountForm onCreated={() => loadAll()} />
+        </UiCard>
       </section>
 
       <section>
-        <h2>Cartões</h2>
-        {loaded && cards.length === 0 && <p>Nenhum cartão cadastrado.</p>}
-        <ul>
-          {cards.map((card) => (
-            <li key={card.id}>
-              {card.name} — limite {card.creditLimit} — gasto {card.currentSpending} — disponível{' '}
-              {card.availableLimit}
-              {card.linkedAccount ? ` — vinculado a ${card.linkedAccount.name}` : ' — sem vínculo'}
-              {!card.isActive && ' — inativo'}
-              {card.isHidden && ' — oculto'}
-              <button type="button" onClick={() => toggleCardFlag(card, 'isActive')}>
-                {card.isActive ? 'Desativar' : 'Ativar'}
-              </button>
-              <button type="button" onClick={() => toggleCardFlag(card, 'isHidden')}>
-                {card.isHidden ? 'Reexibir' : 'Ocultar'}
-              </button>
-              <button type="button" onClick={() => attemptDelete({ kind: 'card', id: card.id, name: card.name })}>
-                Remover
-              </button>
-              <Link to={`/cartoes/${card.id}/faturas`}>Ver faturas</Link>
-            </li>
-          ))}
-        </ul>
-        <CardForm accounts={accounts} onCreated={() => loadAll()} />
+        <h2 className="mb-3">Cartões</h2>
+        {loaded && cards.length === 0 ? (
+          <EmptyState>Nenhum cartão cadastrado.</EmptyState>
+        ) : (
+          <ItemList className="mb-4">
+            {cards.map((card) => (
+              <ItemRow key={card.id}>
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-slate-50">
+                    {card.name}
+                    {!card.isActive && (
+                      <Badge tone="slate" className="ml-2">
+                        inativo
+                      </Badge>
+                    )}
+                    {card.isHidden && (
+                      <Badge tone="slate" className="ml-2">
+                        oculto
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    limite {card.creditLimit} — gasto {card.currentSpending} — disponível{' '}
+                    {card.availableLimit}
+                    {card.linkedAccount ? ` — vinculado a ${card.linkedAccount.name}` : ' — sem vínculo'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to={`/cartoes/${card.id}/faturas`}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                  >
+                    Ver faturas
+                  </Link>
+                  <Button size="sm" onClick={() => toggleCardFlag(card, 'isActive')}>
+                    {card.isActive ? 'Desativar' : 'Ativar'}
+                  </Button>
+                  <Button size="sm" onClick={() => toggleCardFlag(card, 'isHidden')}>
+                    {card.isHidden ? 'Reexibir' : 'Ocultar'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => attemptDelete({ kind: 'card', id: card.id, name: card.name })}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              </ItemRow>
+            ))}
+          </ItemList>
+        )}
+        <UiCard>
+          <CardForm accounts={accounts} onCreated={() => loadAll()} />
+        </UiCard>
       </section>
-    </main>
+    </div>
   )
 }

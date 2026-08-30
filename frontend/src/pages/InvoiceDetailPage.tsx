@@ -1,16 +1,36 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useState, type ComponentProps, type FormEvent } from 'react'
+import { useParams } from 'react-router-dom'
 import { listAccounts, type Account } from '../accounts/accountsApi'
 import { listCards, type Card } from '../cards/cardsApi'
 import { getInvoice, getInvoiceTransactions, updateInvoice, payInvoice, type Invoice } from '../invoices/invoicesApi'
 import type { Transaction } from '../transactions/transactionsApi'
 import { ApiError } from '../lib/httpClient'
+import {
+  PageHeader,
+  Card as UiCard,
+  Field,
+  Input,
+  Select,
+  Button,
+  Badge,
+  Alert,
+  ItemList,
+  ItemRow,
+  EmptyState,
+} from '../components/ui'
 
 const STATUS_LABELS: Record<Invoice['status'], string> = {
   aberta: 'Aberta',
   fechada: 'Fechada',
   atrasada: 'Atrasada',
   paga: 'Paga',
+}
+
+const STATUS_TONES: Record<Invoice['status'], ComponentProps<typeof Badge>['tone']> = {
+  aberta: 'blue',
+  fechada: 'amber',
+  atrasada: 'red',
+  paga: 'green',
 }
 
 export function InvoiceDetailPage() {
@@ -80,91 +100,112 @@ export function InvoiceDetailPage() {
 
   if (!invoice) {
     return (
-      <main>
-        <p>Carregando...</p>
-      </main>
+      <div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
+      </div>
     )
   }
 
   const isPaid = invoice.status === 'paga'
 
   return (
-    <main>
-      <p>{card && <Link to={`/cartoes/${card.id}/faturas`}>Voltar</Link>}</p>
-      <h1>
-        Fatura {String(invoice.periodMonth).padStart(2, '0')}/{invoice.periodYear}
-      </h1>
-      <p>
-        Status: {STATUS_LABELS[invoice.status]} — Total: {invoice.total}
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        backTo={card ? `/cartoes/${card.id}/faturas` : undefined}
+        title={`Fatura ${String(invoice.periodMonth).padStart(2, '0')}/${invoice.periodYear}`}
+      />
 
-      <section>
-        <h2>Datas</h2>
-        <label htmlFor="invoice-closing-date">Fechamento</label>
-        <input
-          id="invoice-closing-date"
-          type="date"
-          value={closingDate}
-          disabled={isPaid}
-          onChange={(e) => setClosingDate(e.target.value)}
-        />
-        <label htmlFor="invoice-due-date">Vencimento</label>
-        <input
-          id="invoice-due-date"
-          type="date"
-          value={dueDate}
-          disabled={isPaid}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
-        {!isPaid && (
-          <button type="button" onClick={handleSaveDates}>
-            Salvar datas
-          </button>
-        )}
-        {datesError && <p role="alert">{datesError}</p>}
-      </section>
+      <UiCard className="flex flex-wrap items-center gap-3">
+        <Badge tone={STATUS_TONES[invoice.status]}>{STATUS_LABELS[invoice.status]}</Badge>
+        <span className="text-sm text-slate-600 dark:text-slate-400">Total: {invoice.total}</span>
+      </UiCard>
 
-      <section>
-        <h2>Pagamento</h2>
+      <UiCard>
+        <h2 className="mb-3">Datas</h2>
+        <div className="flex flex-wrap items-end gap-4">
+          <Field label="Fechamento" htmlFor="invoice-closing-date">
+            <Input
+              id="invoice-closing-date"
+              type="date"
+              value={closingDate}
+              disabled={isPaid}
+              onChange={(e) => setClosingDate(e.target.value)}
+            />
+          </Field>
+          <Field label="Vencimento" htmlFor="invoice-due-date">
+            <Input
+              id="invoice-due-date"
+              type="date"
+              value={dueDate}
+              disabled={isPaid}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </Field>
+          {!isPaid && (
+            <Button type="button" onClick={handleSaveDates}>
+              Salvar datas
+            </Button>
+          )}
+        </div>
+        {datesError && <Alert className="mt-3">{datesError}</Alert>}
+      </UiCard>
+
+      <UiCard>
+        <h2 className="mb-3">Pagamento</h2>
         {isPaid ? (
-          <p>Fatura paga.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Fatura paga.</p>
         ) : (
-          <form onSubmit={handlePay} aria-label="Pagar fatura">
-            <label htmlFor="invoice-payment-account">Conta pagadora</label>
-            <select
-              id="invoice-payment-account"
-              value={paymentAccountId}
-              onChange={(e) => setPaymentAccountId(e.target.value)}
-              required
-            >
-              <option value="">Selecione...</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
-            <button type="submit" disabled={isPaying}>
+          <form onSubmit={handlePay} aria-label="Pagar fatura" className="flex flex-wrap items-end gap-4">
+            <Field label="Conta pagadora" htmlFor="invoice-payment-account">
+              <Select
+                id="invoice-payment-account"
+                value={paymentAccountId}
+                onChange={(e) => setPaymentAccountId(e.target.value)}
+                required
+              >
+                <option value="">Selecione...</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Button type="submit" variant="primary" disabled={isPaying}>
               {isPaying ? 'Pagando...' : `Pagar fatura (${invoice.total})`}
-            </button>
-            {payError && <p role="alert">{payError}</p>}
+            </Button>
+            {payError && <Alert>{payError}</Alert>}
           </form>
         )}
-      </section>
+      </UiCard>
 
       <section>
-        <h2>Lançamentos</h2>
-        {transactions.length === 0 && <p>Nenhum lançamento nesta fatura.</p>}
-        <ul>
-          {transactions.map((transaction) => (
-            <li key={transaction.id}>
-              {transaction.date.slice(0, 10)} — {transaction.description} —{' '}
-              {transaction.type === 'expense' ? '-' : '+'}
-              {transaction.amount}
-            </li>
-          ))}
-        </ul>
+        <h2 className="mb-3">Lançamentos</h2>
+        {transactions.length === 0 ? (
+          <EmptyState>Nenhum lançamento nesta fatura.</EmptyState>
+        ) : (
+          <ItemList>
+            {transactions.map((transaction) => (
+              <ItemRow key={transaction.id}>
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-slate-50">{transaction.description}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{transaction.date.slice(0, 10)}</p>
+                </div>
+                <span
+                  className={
+                    transaction.type === 'expense'
+                      ? 'font-semibold tabular-nums text-red-600 dark:text-red-400'
+                      : 'font-semibold tabular-nums text-emerald-600 dark:text-emerald-400'
+                  }
+                >
+                  {transaction.type === 'expense' ? '-' : '+'}
+                  {transaction.amount}
+                </span>
+              </ItemRow>
+            ))}
+          </ItemList>
+        )}
       </section>
-    </main>
+    </div>
   )
 }
