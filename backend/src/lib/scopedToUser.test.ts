@@ -24,4 +24,13 @@ describe('scopedToUser', () => {
     const result = scopedToUser('user-1', { where: { userId: 'attacker-controlled' } })
     expect(result.where.userId).toBe('user-1')
   })
+
+  it('adds a where clause even when args has no where property at all', () => {
+    const result = scopedToUser('user-1', { include: { bank: true }, orderBy: { name: 'asc' } })
+    expect(result).toEqual({
+      include: { bank: true },
+      orderBy: { name: 'asc' },
+      where: { userId: 'user-1' },
+    })
+  })
 })

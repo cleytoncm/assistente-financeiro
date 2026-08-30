@@ -5,6 +5,11 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     setupFiles: ['./src/test/env.setup.ts', './src/test/setup.ts'],
+    // All test files share one real Postgres test database (constitution.md requires real
+    // integration tests, not mocks). Running files in parallel lets one file's beforeEach
+    // TRUNCATE wipe data another file's in-flight test just created — a genuine race, not
+    // flakiness to work around with retries. Serializing file execution avoids it.
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

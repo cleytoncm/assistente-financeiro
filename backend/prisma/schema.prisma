@@ -14,5 +14,54 @@ model User {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
 
+  accounts Account[]
+  cards    Card[]
+
   @@map("users")
+}
+
+/// Catálogo de bancos compartilhado entre usuários (sem user_id) — RF-06.
+model Bank {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  accounts Account[]
+
+  @@map("banks")
+}
+
+model Account {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  bankId         String   @map("bank_id")
+  currency       String   @default("BRL") @db.Char(3)
+  initialBalance Decimal  @default(0) @map("initial_balance") @db.Decimal(12, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user        User   @relation(fields: [userId], references: [id])
+  bank        Bank   @relation(fields: [bankId], references: [id])
+  linkedCards Card[] @relation("CardLinkedAccount")
+
+  @@unique([userId, name])
+  @@map("accounts")
+}
+
+model Card {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  name            String
+  creditLimit     Decimal  @map("credit_limit") @db.Decimal(12, 2)
+  closingDay      Int      @map("closing_day")
+  dueDay          Int      @map("due_day")
+  linkedAccountId String?  @map("linked_account_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user          User     @relation(fields: [userId], references: [id])
+  linkedAccount Account? @relation("CardLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, name])
+  @@map("cards")
 }
