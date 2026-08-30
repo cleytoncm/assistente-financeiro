@@ -32,6 +32,8 @@ Uso via bot conversacional (lançamentos rápidos) e painel web (visão consolid
 | Hospedagem | GCP (Cloud Run + Cloud SQL) | Confirmado pelo usuário |
 | Usuários | Multi-usuário com login, dados isolados; subusuários (view-only) planejado para fase futura | Confirmado pelo usuário |
 | Formatos de importação | OFX, CSV, PDF de fatura | Confirmado pelo usuário |
+| Extração de CSV/PDF de fatura | Agente (LLM) via Vertex AI (Gemini) — sem mapeamento manual de colunas nem parser por banco | Confirmado pelo usuário (Fase 6) |
+| Fila de processamento assíncrono | Cloud Tasks | Confirmado pelo usuário (Fase 6) |
 
 Decisões marcadas como "Assumido" devem ser confirmadas antes ou durante a Fase 1 —
 não bloqueiam o início do trabalho de modelagem, mas podem afetar design de fases futuras
@@ -44,6 +46,13 @@ não bloqueiam o início do trabalho de modelagem, mas podem afetar design de fa
   Auth Proxy/conector, não host/porta direto
 - **Segredos**: Secret Manager (token do bot, credenciais de banco) — nunca em `.env` versionado
 - **Imagens**: Artifact Registry
+- **Fila de tarefas**: Cloud Tasks — processamento assíncrono de importação de arquivo (Fase 6),
+  disparando um endpoint interno protegido por token OIDC; usado porque Cloud Run throttla CPU
+  do contêiner após a resposta HTTP ser enviada, então "disparar e esquecer" dentro da própria
+  requisição não é confiável
+- **IA generativa**: Vertex AI (Gemini) — extração de lançamentos de CSV/PDF de fatura na
+  importação de arquivo (Fase 6); autenticação via service account do Cloud Run (sem API key em
+  Secret Manager, diferente das demais integrações)
 - **CI/CD**: a definir (Cloud Build ou GitHub Actions) — não bloqueia a Fase 1
 - **Bot**: modo *webhook* (não polling), pois Cloud Run é request-driven; o endpoint do webhook
   deve validar um secret token do Telegram para rejeitar chamadas forjadas
