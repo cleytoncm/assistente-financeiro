@@ -19,3 +19,8 @@ export const updateAccountSchema = z.object({
   bankId: z.string().trim().min(1).optional(),
   currency: currencySchema.optional(),
 })
+
+export const updateAccountStatusSchema = z.object({
+  isActive: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
+})

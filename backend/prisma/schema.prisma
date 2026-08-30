@@ -14,8 +14,10 @@ model User {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  accounts Account[]
-  cards    Card[]
+  accounts     Account[]
+  cards        Card[]
+  categories   Category[]
+  transactions Transaction[]
 
   @@map("users")
 }
@@ -39,11 +41,14 @@ model Account {
   bankId         String   @map("bank_id")
   currency       String   @default("BRL") @db.Char(3)
   initialBalance Decimal  @default(0) @map("initial_balance") @db.Decimal(12, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  isHidden       Boolean  @default(false) @map("is_hidden")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  user        User   @relation(fields: [userId], references: [id])
-  bank        Bank   @relation(fields: [bankId], references: [id])
-  linkedCards Card[] @relation("CardLinkedAccount")
+  user         User          @relation(fields: [userId], references: [id])
+  bank         Bank          @relation(fields: [bankId], references: [id])
+  linkedCards  Card[]        @relation("CardLinkedAccount")
+  transactions Transaction[]
 
   @@unique([userId, name])
   @@map("accounts")
@@ -57,11 +62,60 @@ model Card {
   closingDay      Int      @map("closing_day")
   dueDay          Int      @map("due_day")
   linkedAccountId String?  @map("linked_account_id")
+  isActive        Boolean  @default(true) @map("is_active")
+  isHidden        Boolean  @default(false) @map("is_hidden")
   createdAt       DateTime @default(now()) @map("created_at")
 
-  user          User     @relation(fields: [userId], references: [id])
-  linkedAccount Account? @relation("CardLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
+  user          User          @relation(fields: [userId], references: [id])
+  linkedAccount Account?      @relation("CardLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
+  transactions  Transaction[]
 
   @@unique([userId, name])
   @@map("cards")
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+/// Catálogo de categorias — mesmo padrão do Bank: user_id nulo = categoria do seed,
+/// compartilhada e somente leitura; preenchido = categoria própria do usuário.
+model Category {
+  id        String          @id @default(uuid())
+  userId    String?         @map("user_id")
+  name      String
+  type      TransactionType
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  user         User?         @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  id                    String          @id @default(uuid())
+  userId                String          @map("user_id")
+  type                  TransactionType
+  amount                Decimal         @db.Decimal(12, 2)
+  description           String
+  date                  DateTime        @db.Date
+  categoryId            String?         @map("category_id")
+  accountId             String?         @map("account_id")
+  cardId                String?         @map("card_id")
+  refundOfTransactionId String?         @map("refund_of_transaction_id")
+  installmentGroupId    String?         @map("installment_group_id")
+  installmentNumber     Int?            @map("installment_number")
+  installmentCount      Int?            @map("installment_count")
+  createdAt             DateTime        @default(now()) @map("created_at")
+
+  user     User          @relation(fields: [userId], references: [id])
+  category Category?     @relation(fields: [categoryId], references: [id])
+  account  Account?      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  card     Card?         @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  refundOf Transaction?  @relation("RefundOf", fields: [refundOfTransactionId], references: [id])
+  refunds  Transaction[] @relation("RefundOf")
+
+  @@map("transactions")
 }

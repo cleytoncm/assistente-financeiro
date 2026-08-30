@@ -17,3 +17,8 @@ export const updateCardSchema = z.object({
   dueDay: dayOfMonth.optional(),
   linkedAccountId: z.string().trim().min(1).nullable().optional(),
 })
+
+export const updateCardStatusSchema = z.object({
+  isActive: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
+})

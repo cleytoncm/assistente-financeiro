@@ -10,6 +10,9 @@ export default defineConfig({
     // TRUNCATE wipe data another file's in-flight test just created — a genuine race, not
     // flakiness to work around with retries. Serializing file execution avoids it.
     fileParallelism: false,
+    // Without this, vitest's default include glob also picks up compiled test files under
+    // dist/ (from `npm run build`), running every test twice.
+    exclude: ['**/node_modules/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

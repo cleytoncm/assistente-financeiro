@@ -243,3 +243,136 @@ describe('deleting a linked account', () => {
     expect(updatedCard.linkedAccountId).toBeNull()
   })
 })
+
+describe('GET /cards — gasto e limite (RF-10)', () => {
+  it('computes currentSpending and availableLimit from transactions up to today', async () => {
+    const { token } = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cartão Gasto', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+
+    await request(app)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ type: 'expense', amount: 300, date: '2020-01-01', description: 'X', cardId: created.body.id })
+    await request(app)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ type: 'income', amount: 50, date: '2020-01-01', description: 'Estorno', cardId: created.body.id })
+
+    const res = await request(app).get('/cards').set('Authorization', `Bearer ${token}`)
+    const card = res.body.find((c: { id: string }) => c.id === created.body.id)
+    expect(card.currentSpending).toBe('250')
+    expect(card.availableLimit).toBe('750')
+  })
+
+  it('ignores transactions after the requested date', async () => {
+    const { token } = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cartão Futuro', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+    await request(app)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ type: 'expense', amount: 300, date: '2030-01-01', description: 'X', cardId: created.body.id })
+
+    const res = await request(app)
+      .get('/cards?date=2024-01-01')
+      .set('Authorization', `Bearer ${token}`)
+    const card = res.body.find((c: { id: string }) => c.id === created.body.id)
+    expect(card.currentSpending).toBe('0')
+  })
+})
+
+describe('PATCH /cards/:id/status (RF-08)', () => {
+  it('a hidden card is excluded from the default listing but included with includeHidden=true', async () => {
+    const { token } = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cartão Oculto', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+    await request(app)
+      .patch(`/cards/${created.body.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ isHidden: true })
+
+    const hiddenFromDefault = await request(app).get('/cards').set('Authorization', `Bearer ${token}`)
+    expect(hiddenFromDefault.body.some((c: { id: string }) => c.id === created.body.id)).toBe(false)
+
+    const withHidden = await request(app)
+      .get('/cards?includeHidden=true')
+      .set('Authorization', `Bearer ${token}`)
+    expect(withHidden.body.some((c: { id: string }) => c.id === created.body.id)).toBe(true)
+  })
+
+  it('rejects an invalid body', async () => {
+    const { token } = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cartão Status Invalido', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+
+    const res = await request(app)
+      .patch(`/cards/${created.body.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ isActive: 'not-a-boolean' })
+
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 404 for a card belonging to another user', async () => {
+    const userA = await createAuthenticatedUser(app)
+    const userB = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${userA.token}`)
+      .send({ name: 'Cartão A', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+
+    const res = await request(app)
+      .patch(`/cards/${created.body.id}/status`)
+      .set('Authorization', `Bearer ${userB.token}`)
+      .send({ isActive: false })
+
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('DELETE /cards/:id — com lançamentos (RF-09)', () => {
+  it('blocks deletion without cascade when there are transactions', async () => {
+    const { token } = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cartão Com Lancamento', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+    await request(app)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ type: 'expense', amount: 10, date: '2024-01-01', description: 'X', cardId: created.body.id })
+
+    const res = await request(app)
+      .delete(`/cards/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(409)
+  })
+
+  it('deletes the card and its transactions with cascade=true', async () => {
+    const { token } = await createAuthenticatedUser(app)
+    const created = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cartão Cascata', creditLimit: 1000, closingDay: 10, dueDay: 20 })
+    await request(app)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ type: 'expense', amount: 10, date: '2024-01-01', description: 'X', cardId: created.body.id })
+
+    const res = await request(app)
+      .delete(`/cards/${created.body.id}?cascade=true`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(204)
+  })
+})

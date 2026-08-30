@@ -18,3 +18,10 @@ export class LinkedAccountNotFoundError extends Error {
     this.name = 'LinkedAccountNotFoundError'
   }
 }
+
+export class CardHasTransactionsError extends Error {
+  constructor() {
+    super('Card has transactions; pass cascade=true to delete them too')
+    this.name = 'CardHasTransactionsError'
+  }
+}

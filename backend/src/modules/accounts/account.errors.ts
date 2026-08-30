@@ -18,3 +18,10 @@ export class BankNotFoundError extends Error {
     this.name = 'BankNotFoundError'
   }
 }
+
+export class AccountHasTransactionsError extends Error {
+  constructor() {
+    super('Account has transactions; pass cascade=true to delete them too')
+    this.name = 'AccountHasTransactionsError'
+  }
+}
