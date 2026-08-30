@@ -153,10 +153,12 @@ export async function deleteCard(userId: string, id: string, cascade: boolean): 
     throw new CardHasTransactionsError()
   }
 
-  // Invoices are deleted unconditionally, even when transactionCount is 0: an "intermediate
-  // empty invoice" (Etapa 4) can exist for this card with no transactions of its own yet, and
-  // would otherwise block deleting the card via the invoice->card foreign key.
+  // Invoices and import batches are deleted unconditionally, even when transactionCount is 0:
+  // an "intermediate empty invoice" (Etapa 4) or a failed/fully-discarded import batch (Etapa 6)
+  // can exist for this card with no transactions of its own yet, and would otherwise block
+  // deleting the card via their respective foreign keys.
   await prisma.$transaction([
+    prisma.importBatch.deleteMany({ where: { cardId: id } }),
     prisma.transaction.deleteMany({ where: { cardId: id } }),
     prisma.invoice.deleteMany({ where: { cardId: id } }),
     prisma.card.delete({ where: { id } }),

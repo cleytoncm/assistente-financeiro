@@ -9,6 +9,9 @@ import { transactionRouter } from './modules/transactions/transaction.routes.js'
 import { invoiceRouter } from './modules/invoices/invoice.routes.js'
 import { payableRouter } from './modules/payables/payable.routes.js'
 import { payableGroupRouter } from './modules/payables/payableGroup.routes.js'
+import { importBatchRouter } from './modules/imports/importBatch.routes.js'
+import { importedRowRouter } from './modules/imports/importedRow.routes.js'
+import { internalImportRouter } from './modules/imports/internalImport.routes.js'
 
 export function createApp(): Express {
   const app = express()
@@ -29,6 +32,9 @@ export function createApp(): Express {
   app.use('/invoices', invoiceRouter)
   app.use('/payables', payableRouter)
   app.use('/payable-groups', payableGroupRouter)
+  app.use('/import-batches', importBatchRouter)
+  app.use('/imported-rows', importedRowRouter)
+  app.use('/internal/import-batches', internalImportRouter)
 
   return app
 }

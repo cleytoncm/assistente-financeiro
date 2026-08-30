@@ -140,13 +140,19 @@ export async function deleteAccount(userId: string, id: string, cascade: boolean
     throw new AccountHasTransactionsError()
   }
 
+  // Import batches referencing this account (even ones with zero resulting transactions, e.g.
+  // a failed import) must go first: ImportBatch.accountId is a Restrict FK, and would otherwise
+  // block deleting the account even after its transactions are gone.
+  const importBatchDeletion = prisma.importBatch.deleteMany({ where: { accountId: id } })
+
   if (transactionCount > 0) {
     await prisma.$transaction([
+      importBatchDeletion,
       prisma.transaction.deleteMany({ where: { accountId: id } }),
       prisma.account.delete({ where: { id } }),
     ])
     return
   }
 
-  await prisma.account.delete({ where: { id } })
+  await prisma.$transaction([importBatchDeletion, prisma.account.delete({ where: { id } })])
 }
