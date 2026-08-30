@@ -108,7 +108,7 @@ aplicada por revisão/localmente, sem gate automático bloqueando push/PR.
 backend correspondente — cada etapa entrega API **e** as telas que a usam. O bot conversacional
 (Telegram) continua como interface própria, à parte do painel web.
 
-### Fase 1 — MVP
+### Fase 1 — MVP (concluída — backend e frontend implementados e testados nas 6 etapas)
 1. **Autenticação e Usuários** — cadastro, login, token, isolamento de dados por usuário
    (+ telas de login/cadastro) (`specs/fase-1/etapa-01-autenticacao-usuarios/`)
 2. **Contas e Cartões** — modelo de dados base (contas, cartões, vínculo opcional)
@@ -125,7 +125,10 @@ backend correspondente — cada etapa entrega API **e** as telas que a usam. O b
    (`specs/fase-1/etapa-05-contas-a-pagar-receber/`)
 6. **Importação de arquivos** — OFX e CSV primeiro, PDF de fatura depois
    (+ tela de upload e revisão de importação)
-   (`specs/fase-1/etapa-06-importacao-arquivos/`)
+   (`specs/fase-1/etapa-06-importacao-arquivos/`). Cloud Tasks e Vertex AI (Gemini) ficaram atrás
+   de uma interface (`ImportQueue`, `LlmExtractor`) com fake determinístico em dev/teste, já que
+   este ambiente de desenvolvimento não tem credenciais GCP — a integração real (fila do Cloud
+   Tasks, chamada ao Vertex AI) precisa ser validada contra um projeto de verdade antes do deploy.
 
 ### Fase 2 — pós-MVP
 1. **Bot conversacional** — lançar, consultar saldo, enviar arquivo para importar (interface

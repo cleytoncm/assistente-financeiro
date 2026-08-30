@@ -14,11 +14,16 @@ com suporte planejado a subusuários com visualização compartilhada.
 - Deploy na GCP (Cloud Run + Cloud SQL para PostgreSQL)
 
 ## Status
-Em desenvolvimento, fase a fase. O desenvolvimento é guiado por especificações
-(*spec-driven development*): veja `specs/00-overview/constitution.md` para a visão completa,
-decisões técnicas e o roadmap de fases e etapas (Fase 1 = MVP, Fase 2 = pós-MVP). Cada etapa
-tem seus próprios `requirements.md`, `design.md` e `tasks.md` em
-`specs/fase-<N>/etapa-<NN>-<nome>/`.
+Fase 1 (MVP) concluída — Etapas 1 a 6, backend e frontend implementados e testados. Fase 2
+(pós-MVP: bot conversacional, subusuários) ainda não iniciada. O desenvolvimento é guiado por
+especificações (*spec-driven development*): veja `specs/00-overview/constitution.md` para a
+visão completa, decisões técnicas e o roadmap de fases e etapas. Cada etapa tem seus próprios
+`requirements.md`, `design.md` e `tasks.md` em `specs/fase-<N>/etapa-<NN>-<nome>/`.
+
+Etapa 6 (importação de arquivos) depende de Cloud Tasks e Vertex AI (Gemini), sem credenciais
+neste ambiente — ambos ficaram atrás de uma interface com um fake determinístico para dev/teste;
+a integração real precisa ser validada contra um projeto GCP antes do deploy (ver
+`specs/fase-1/etapa-06-importacao-arquivos/tasks.md`).
 
 ## Rodando localmente
 
