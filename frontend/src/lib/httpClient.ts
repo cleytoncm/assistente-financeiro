@@ -3,11 +3,13 @@ const TOKEN_KEY = 'token'
 
 export class ApiError extends Error {
   status: number
+  data: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, data?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.data = data
   }
 }
 
@@ -54,7 +56,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, data?.error ?? 'Request failed')
+    throw new ApiError(response.status, data?.error ?? 'Request failed', data)
   }
 
   return data as T

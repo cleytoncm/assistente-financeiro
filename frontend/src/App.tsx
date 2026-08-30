@@ -6,6 +6,8 @@ import { RegisterPage } from './pages/RegisterPage'
 import { HomePage } from './pages/HomePage'
 import { AccountsPage } from './pages/AccountsPage'
 import { TransactionsPage } from './pages/TransactionsPage'
+import { CardInvoicesPage } from './pages/CardInvoicesPage'
+import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 
 export function App() {
   return (
@@ -35,6 +37,22 @@ export function App() {
             element={
               <RequireAuth>
                 <TransactionsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/cartoes/:cardId/faturas"
+            element={
+              <RequireAuth>
+                <CardInvoicesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/faturas/:invoiceId"
+            element={
+              <RequireAuth>
+                <InvoiceDetailPage />
               </RequireAuth>
             }
           />

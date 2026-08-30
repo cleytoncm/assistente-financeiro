@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { listAccounts, type Account } from '../accounts/accountsApi'
 import { listCards, type Card } from '../cards/cardsApi'
 import { listCategories, type Category } from '../categories/categoriesApi'
-import { createTransaction } from './transactionsApi'
+import { createTransaction, type CreateTransactionInput, type InvoicePaymentAdjustment } from './transactionsApi'
 import { ApiError } from '../lib/httpClient'
 
 function today(): string {
@@ -23,6 +23,8 @@ export function TransactionForm({ onCreated }: { onCreated: () => void }) {
   const [installments, setInstallments] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingAdjustment, setPendingAdjustment] = useState<InvoicePaymentAdjustment | null>(null)
+  const [pendingInput, setPendingInput] = useState<CreateTransactionInput | null>(null)
 
   useEffect(() => {
     listAccounts().then(setAccounts).catch(() => {})
@@ -32,6 +34,32 @@ export function TransactionForm({ onCreated }: { onCreated: () => void }) {
 
   const isCardDestination = destination.startsWith('card:')
   const filteredCategories = categories.filter((c) => c.type === type)
+
+  async function submit(input: CreateTransactionInput) {
+    setIsSubmitting(true)
+    try {
+      await createTransaction(input)
+      onCreated()
+      setAmount('')
+      setDescription('')
+      setInstallments('')
+      setPendingAdjustment(null)
+      setPendingInput(null)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const adjustment = (err.data as { invoicePaymentAdjustment?: InvoicePaymentAdjustment } | null)
+          ?.invoicePaymentAdjustment
+        if (adjustment) {
+          setPendingAdjustment(adjustment)
+          setPendingInput(input)
+          return
+        }
+      }
+      setError(err instanceof ApiError ? err.message : 'Erro ao lançar. Tente novamente.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -43,27 +71,26 @@ export function TransactionForm({ onCreated }: { onCreated: () => void }) {
       return
     }
 
-    setIsSubmitting(true)
-    try {
-      await createTransaction({
-        type,
-        amount: Number(amount),
-        date,
-        description,
-        categoryId: categoryId || undefined,
-        accountId: destType === 'account' ? destId : undefined,
-        cardId: destType === 'card' ? destId : undefined,
-        installments: isCardDestination && installments ? Number(installments) : undefined,
-      })
-      onCreated()
-      setAmount('')
-      setDescription('')
-      setInstallments('')
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erro ao lançar. Tente novamente.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    await submit({
+      type,
+      amount: Number(amount),
+      date,
+      description,
+      categoryId: categoryId || undefined,
+      accountId: destType === 'account' ? destId : undefined,
+      cardId: destType === 'card' ? destId : undefined,
+      installments: isCardDestination && installments ? Number(installments) : undefined,
+    })
+  }
+
+  async function confirmAdjustment() {
+    if (!pendingInput) return
+    await submit({ ...pendingInput, confirmPaymentAdjustment: true })
+  }
+
+  function cancelAdjustment() {
+    setPendingAdjustment(null)
+    setPendingInput(null)
   }
 
   return (
@@ -157,6 +184,21 @@ export function TransactionForm({ onCreated }: { onCreated: () => void }) {
       <button type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Lançando...' : 'Lançar'}
       </button>
+
+      {pendingAdjustment && (
+        <section role="alertdialog" aria-label="Confirmar ajuste de fatura paga">
+          <p>
+            A fatura desse cartão já está paga. O pagamento de R${pendingAdjustment.oldAmount} será
+            atualizado para R${pendingAdjustment.newAmount}. Deseja continuar?
+          </p>
+          <button type="button" onClick={confirmAdjustment} disabled={isSubmitting}>
+            Confirmar
+          </button>
+          <button type="button" onClick={cancelAdjustment}>
+            Cancelar
+          </button>
+        </section>
+      )}
     </form>
   )
 }

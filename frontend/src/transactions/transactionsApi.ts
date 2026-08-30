@@ -13,6 +13,7 @@ export type Transaction = {
   installmentGroupId: string | null
   installmentNumber: number | null
   installmentCount: number | null
+  invoiceId: string | null
 }
 
 export type CreateTransactionInput = {
@@ -25,7 +26,10 @@ export type CreateTransactionInput = {
   cardId?: string
   refundOfTransactionId?: string
   installments?: number
+  confirmPaymentAdjustment?: boolean
 }
+
+export type InvoicePaymentAdjustment = { invoiceId: string; oldAmount: string; newAmount: string }
 
 export function createTransaction(data: CreateTransactionInput): Promise<Transaction | Transaction[]> {
   return apiFetch('/transactions', { method: 'POST', body: data })
@@ -60,6 +64,7 @@ export type UpdateTransactionInput = {
   categoryId?: string | null
   accountId?: string
   cardId?: string
+  confirmPaymentAdjustment?: boolean
 }
 
 export function updateTransaction(

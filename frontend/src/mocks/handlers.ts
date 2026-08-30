@@ -38,6 +38,19 @@ type MockTransaction = {
   installmentGroupId: string | null
   installmentNumber: number | null
   installmentCount: number | null
+  invoiceId: string | null
+}
+type InvoiceStatus = 'aberta' | 'fechada' | 'atrasada' | 'paga'
+type MockInvoice = {
+  id: string
+  cardId: string
+  periodYear: number
+  periodMonth: number
+  closingDate: string
+  dueDate: string
+  paidAt: string | null
+  paymentAccountId: string | null
+  paymentTransactionId: string | null
 }
 
 const DEFAULT_BANKS: MockBank[] = [{ id: 'seed-bank-1', name: 'Banco do Brasil', code: '001' }]
@@ -51,6 +64,7 @@ let categories: MockCategory[] = []
 let accounts: MockAccount[] = []
 let cards: MockCard[] = []
 let transactions: MockTransaction[] = []
+let invoices: MockInvoice[] = []
 let nextId = 1
 
 export function resetMockData() {
@@ -59,9 +73,56 @@ export function resetMockData() {
   accounts = []
   cards = []
   transactions = []
+  invoices = []
   nextId = 1
 }
 resetMockData()
+
+// Simplified invoice bucketing for mocked component tests: one invoice per (card, calendar
+// month) of the transaction's own date, rather than the real closing-day-aware period math the
+// backend uses — component tests only need internally consistent grouping/status, not
+// bit-for-bit parity with the backend's billing-cycle rules.
+function findOrCreateInvoice(cardId: string, date: string): MockInvoice {
+  const [year, month] = date.slice(0, 7).split('-').map(Number)
+  const existing = invoices.find(
+    (i) => i.cardId === cardId && i.periodYear === year && i.periodMonth === month
+  )
+  if (existing) return existing
+
+  const closingDate = new Date(Date.UTC(year!, month!, 0)).toISOString().slice(0, 10)
+  const dueDate = new Date(Date.UTC(year!, month!, 10)).toISOString().slice(0, 10)
+  const invoice: MockInvoice = {
+    id: `invoice-${nextId++}`,
+    cardId,
+    periodYear: year!,
+    periodMonth: month!,
+    closingDate,
+    dueDate,
+    paidAt: null,
+    paymentAccountId: null,
+    paymentTransactionId: null,
+  }
+  invoices.push(invoice)
+  return invoice
+}
+
+function computeInvoiceStatus(invoice: MockInvoice): InvoiceStatus {
+  if (invoice.paidAt) return 'paga'
+  const today = new Date().toISOString().slice(0, 10)
+  if (today <= invoice.closingDate) return 'aberta'
+  if (today <= invoice.dueDate) return 'fechada'
+  return 'atrasada'
+}
+
+function computeInvoiceTotal(invoiceId: string): number {
+  return transactions
+    .filter((t) => t.invoiceId === invoiceId)
+    .reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : -Number(t.amount)), 0)
+}
+
+function serializeInvoice(invoice: MockInvoice) {
+  return { ...invoice, status: computeInvoiceStatus(invoice), total: computeInvoiceTotal(invoice.id).toString() }
+}
 
 function computeAccountBalance(account: MockAccount, date: string): string {
   const sum = transactions
@@ -265,6 +326,7 @@ export const handlers = [
       cardId?: string
       refundOfTransactionId?: string
       installments?: number
+      confirmPaymentAdjustment?: boolean
     }
 
     if (body.installments) {
@@ -278,11 +340,13 @@ export const handlers = [
         sum += per
         const date = new Date(body.date)
         date.setMonth(date.getMonth() + i)
+        const isoDate = date.toISOString().slice(0, 10)
+        const invoice = body.cardId ? findOrCreateInvoice(body.cardId, isoDate) : null
         const transaction: MockTransaction = {
           id: `txn-${nextId++}`,
           type: body.type,
           amount: amount.toFixed(2),
-          date: date.toISOString().slice(0, 10),
+          date: isoDate,
           description: body.description,
           categoryId: body.categoryId ?? null,
           accountId: null,
@@ -291,11 +355,32 @@ export const handlers = [
           installmentGroupId: groupId,
           installmentNumber: i + 1,
           installmentCount: body.installments,
+          invoiceId: invoice?.id ?? null,
         }
         transactions.push(transaction)
         created.push(transaction)
       }
       return HttpResponse.json(created, { status: 201 })
+    }
+
+    const invoice = body.cardId ? findOrCreateInvoice(body.cardId, body.date) : null
+    if (invoice?.paidAt) {
+      const oldAmount = computeInvoiceTotal(invoice.id)
+      const delta = body.type === 'expense' ? body.amount : -body.amount
+      const newAmount = oldAmount + delta
+      if (!body.confirmPaymentAdjustment) {
+        return HttpResponse.json(
+          {
+            error: 'This invoice is already paid; confirm to update the payment amount',
+            invoicePaymentAdjustment: {
+              invoiceId: invoice.id,
+              oldAmount: oldAmount.toString(),
+              newAmount: newAmount.toString(),
+            },
+          },
+          { status: 409 }
+        )
+      }
     }
 
     const transaction: MockTransaction = {
@@ -311,8 +396,15 @@ export const handlers = [
       installmentGroupId: null,
       installmentNumber: null,
       installmentCount: null,
+      invoiceId: invoice?.id ?? null,
     }
     transactions.push(transaction)
+
+    if (invoice?.paidAt && invoice.paymentTransactionId) {
+      const paymentTransaction = transactions.find((t) => t.id === invoice.paymentTransactionId)
+      if (paymentTransaction) paymentTransaction.amount = computeInvoiceTotal(invoice.id).toString()
+    }
+
     return HttpResponse.json(transaction, { status: 201 })
   }),
 
@@ -321,6 +413,17 @@ export const handlers = [
     const applyToRemaining = url.searchParams.get('applyToRemaining') === 'true'
     const body = (await request.json()) as Partial<MockTransaction>
     const transaction = transactions.find((t) => t.id === params.id)!
+
+    if (transaction.invoiceId) {
+      const invoice = invoices.find((i) => i.id === transaction.invoiceId)
+      if (invoice && computeInvoiceStatus(invoice) !== 'aberta') {
+        return HttpResponse.json(
+          { error: 'This transaction belongs to an invoice that is no longer open' },
+          { status: 409 }
+        )
+      }
+    }
+
     const originalDate = transaction.date
     Object.assign(transaction, body)
 
@@ -347,6 +450,16 @@ export const handlers = [
       return HttpResponse.json({ error: 'Transaction not found' }, { status: 404 })
     }
 
+    if (transaction.invoiceId) {
+      const invoice = invoices.find((i) => i.id === transaction.invoiceId)
+      if (invoice && computeInvoiceStatus(invoice) !== 'aberta') {
+        return HttpResponse.json(
+          { error: 'This transaction belongs to an invoice that is no longer open' },
+          { status: 409 }
+        )
+      }
+    }
+
     if (scope === 'remaining' && transaction.installmentGroupId) {
       transactions = transactions.filter(
         (t) => !(t.installmentGroupId === transaction.installmentGroupId && t.date >= transaction.date)
@@ -356,5 +469,73 @@ export const handlers = [
     }
 
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get(`${BASE_URL}/cards/:id/invoices`, ({ params }) => {
+    const list = invoices
+      .filter((i) => i.cardId === params.id)
+      .sort((a, b) => a.periodYear - b.periodYear || a.periodMonth - b.periodMonth)
+    return HttpResponse.json(list.map(serializeInvoice))
+  }),
+
+  http.get(`${BASE_URL}/invoices/:id`, ({ params }) => {
+    const invoice = invoices.find((i) => i.id === params.id)
+    if (!invoice) return HttpResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    return HttpResponse.json(serializeInvoice(invoice))
+  }),
+
+  http.get(`${BASE_URL}/invoices/:id/transactions`, ({ params }) => {
+    const items = transactions.filter((t) => t.invoiceId === params.id)
+    return HttpResponse.json({ items, total: items.length })
+  }),
+
+  http.patch(`${BASE_URL}/invoices/:id`, async ({ request, params }) => {
+    const invoice = invoices.find((i) => i.id === params.id)
+    if (!invoice) return HttpResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    if (invoice.paidAt) return HttpResponse.json({ error: 'Invoice is already paid' }, { status: 409 })
+
+    const body = (await request.json()) as { closingDate?: string; dueDate?: string }
+    const closingDate = body.closingDate ?? invoice.closingDate
+    const dueDate = body.dueDate ?? invoice.dueDate
+    if (closingDate >= dueDate) {
+      return HttpResponse.json({ error: 'closingDate must be before dueDate' }, { status: 409 })
+    }
+    invoice.closingDate = closingDate
+    invoice.dueDate = dueDate
+    return HttpResponse.json(serializeInvoice(invoice))
+  }),
+
+  http.post(`${BASE_URL}/invoices/:id/pay`, async ({ request, params }) => {
+    const invoice = invoices.find((i) => i.id === params.id)
+    if (!invoice) return HttpResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    if (invoice.paidAt) return HttpResponse.json({ error: 'Invoice is already paid' }, { status: 409 })
+
+    const body = (await request.json()) as { accountId: string }
+    const account = accounts.find((a) => a.id === body.accountId)
+    if (!account) return HttpResponse.json({ error: 'Payment account not found' }, { status: 400 })
+
+    const total = computeInvoiceTotal(invoice.id)
+    const paymentTransaction: MockTransaction = {
+      id: `txn-${nextId++}`,
+      type: 'expense',
+      amount: total.toString(),
+      date: new Date().toISOString().slice(0, 10),
+      description: 'Pagamento de fatura',
+      categoryId: null,
+      accountId: account.id,
+      cardId: null,
+      refundOfTransactionId: null,
+      installmentGroupId: null,
+      installmentNumber: null,
+      installmentCount: null,
+      invoiceId: null,
+    }
+    transactions.push(paymentTransaction)
+
+    invoice.paidAt = new Date().toISOString()
+    invoice.paymentAccountId = account.id
+    invoice.paymentTransactionId = paymentTransaction.id
+
+    return HttpResponse.json(serializeInvoice(invoice))
   }),
 ]

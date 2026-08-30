@@ -171,6 +171,7 @@ export function AccountsPage() {
               <button type="button" onClick={() => attemptDelete({ kind: 'card', id: card.id, name: card.name })}>
                 Remover
               </button>
+              <Link to={`/cartoes/${card.id}/faturas`}>Ver faturas</Link>
             </li>
           ))}
         </ul>

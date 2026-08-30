@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Transaction } from './transactionsApi'
 import { updateTransaction, deleteTransaction } from './transactionsApi'
 import type { Category } from '../categories/categoriesApi'
+import { ApiError } from '../lib/httpClient'
 
 export function TransactionRow({
   transaction,
@@ -17,24 +18,40 @@ export function TransactionRow({
   const [description, setDescription] = useState(transaction.description)
   const [amount, setAmount] = useState(transaction.amount)
   const [applyToRemaining, setApplyToRemaining] = useState(false)
+  const [lockError, setLockError] = useState<string | null>(null)
 
   const category = categories.find((c) => c.id === transaction.categoryId)
   const isInstallment = Boolean(transaction.installmentGroupId)
 
   async function handleSave() {
-    await updateTransaction(
-      transaction.id,
-      { description, amount: Number(amount) },
-      applyToRemaining
-    )
-    setIsEditing(false)
-    onChanged()
+    setLockError(null)
+    try {
+      await updateTransaction(
+        transaction.id,
+        { description, amount: Number(amount) },
+        applyToRemaining
+      )
+      setIsEditing(false)
+      onChanged()
+    } catch (err) {
+      setLockError(
+        err instanceof ApiError ? err.message : 'Erro ao salvar. Tente novamente.'
+      )
+    }
   }
 
   async function handleDelete(scope: 'single' | 'remaining') {
-    await deleteTransaction(transaction.id, scope)
-    setIsConfirmingDelete(false)
-    onChanged()
+    setLockError(null)
+    try {
+      await deleteTransaction(transaction.id, scope)
+      setIsConfirmingDelete(false)
+      onChanged()
+    } catch (err) {
+      setLockError(
+        err instanceof ApiError ? err.message : 'Erro ao remover. Tente novamente.'
+      )
+      setIsConfirmingDelete(false)
+    }
   }
 
   if (isEditing) {
@@ -68,6 +85,7 @@ export function TransactionRow({
         <button type="button" onClick={() => setIsEditing(false)}>
           Cancelar
         </button>
+        {lockError && <p role="alert">{lockError}</p>}
       </li>
     )
   }
@@ -107,6 +125,7 @@ export function TransactionRow({
           Remover
         </button>
       )}
+      {lockError && <p role="alert">{lockError}</p>}
     </li>
   )
 }
