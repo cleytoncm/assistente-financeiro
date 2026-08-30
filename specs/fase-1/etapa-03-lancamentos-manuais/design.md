@@ -3,17 +3,17 @@
 ## Modelo de dados
 
 ```
-Account (conta bancária — Fase 2, alterada nesta fase)
+Account (conta bancária — Etapa 2, alterada nesta etapa)
   ... campos já existentes ...
   is_active (BOOLEAN, default true)   -- novo: bloqueia novos lançamentos quando false
   is_hidden (BOOLEAN, default false)  -- novo: some de listagens/seletores quando true
 
-Card (cartão de crédito — Fase 2, alterada nesta fase)
+Card (cartão de crédito — Etapa 2, alterada nesta etapa)
   ... campos já existentes ...
   is_active (BOOLEAN, default true)
   is_hidden (BOOLEAN, default false)
 
-Category (catálogo de categorias — mesmo padrão de Bank na Fase 2)
+Category (catálogo de categorias — mesmo padrão de Bank na Etapa 2)
   id, user_id (FK User, NULLABLE — null = categoria padrão do sistema, compartilhada),
   name, type (ENUM 'income'|'expense'), created_at
   unique(coalesce(user_id, 0), name, type)
@@ -27,8 +27,8 @@ Transaction (lançamento)
   installment_group_id (UUID, NULLABLE — presente só em lançamentos gerados por parcelamento),
   installment_number (INT, NULLABLE), installment_count (INT, NULLABLE),
   created_at
-  -- invoice_id (FK Invoice) é adicionado na Fase 4 (specs/04-cartao-e-faturas/design.md) —
-  -- não existe ainda nesta fase, já que fatura como entidade só nasce na Fase 4
+  -- invoice_id (FK Invoice) é adicionado na Etapa 4 (specs/fase-1/etapa-04-cartao-e-faturas/design.md) —
+  -- não existe ainda nesta etapa, já que fatura como entidade só nasce na Etapa 4
 
   CHECK: exatamente um entre account_id e card_id é não-nulo
   CHECK: installment_group_id, installment_number e installment_count são todos nulos ou
@@ -43,7 +43,7 @@ Notas:
 - Categorias do seed não podem ser editadas/removidas por usuários (só leitura, igual ao
   catálogo de bancos). Categoria própria (`user_id` preenchido) pode ser editada/removida pelo
   dono; não há requisito de bloqueio se já usada em lançamentos — remover a categoria de um
-  lançamento existente só deixa `category_id` nulo (não é um requisito desta fase, mas é o
+  lançamento existente só deixa `category_id` nulo (não é um requisito desta etapa, mas é o
   comportamento natural de uma FK nullable com `ON DELETE SET NULL`).
 - `refund_of_transaction_id` aponta para a transação original estornada (RF-06). Validado na
   escrita: tipo oposto ao original, mesmo `account_id`/`card_id` do original, `amount` menor ou
@@ -89,18 +89,18 @@ DELETE /transactions/:id
   query: scope=single|remaining (default single) — remaining remove esta e as parcelas
          seguintes do mesmo installment_group_id
 
-GET    /accounts?date=YYYY-MM-DD&includeHidden=false   (estende Fase 2)
+GET    /accounts?date=YYYY-MM-DD&includeHidden=false   (estende Etapa 2)
   -> inclui `current_balance` calculado até `date` (default hoje) em cada conta;
      `includeHidden=true` inclui contas com is_hidden=true no resultado
 
-GET    /cards?date=YYYY-MM-DD&includeHidden=false       (estende Fase 2)
+GET    /cards?date=YYYY-MM-DD&includeHidden=false       (estende Etapa 2)
   -> inclui `current_spending` e `available_limit` calculados até `date` em cada cartão;
      mesmo parâmetro `includeHidden`
 
 PATCH  /accounts/:id/status   { is_active?, is_hidden? }   (RF-08)
 PATCH  /cards/:id/status      { is_active?, is_hidden? }   (RF-08)
 
-DELETE /accounts/:id?cascade=true   (RF-09 — sem `cascade`, comportamento da Fase 2: bloqueia
+DELETE /accounts/:id?cascade=true   (RF-09 — sem `cascade`, comportamento da Etapa 2: bloqueia
                                       se houver lançamentos; com `cascade=true`, remove a conta
                                       e todos os lançamentos associados)
 DELETE /cards/:id?cascade=true      (idem)
@@ -109,7 +109,7 @@ POST   /categories            cria categoria própria do usuário { name, type }
 GET    /categories            lista categorias (seed + próprias do usuário)
 ```
 
-Autenticação: todo endpoint exige `requireAuth` (Fase 1); `user_id` sempre de `req.userId`.
+Autenticação: todo endpoint exige `requireAuth` (Etapa 1); `user_id` sempre de `req.userId`.
 Toda query de `Transaction`, `Account` e `Card` passa pelo helper `scopedToUser`; `Category`
 usa a variação `WHERE user_id IS NULL OR user_id = :userId` descrita acima.
 
@@ -127,28 +127,28 @@ usa a variação `WHERE user_id IS NULL OR user_id = :userId` descrita acima.
   mesmo usuário, ter `type` oposto, mesmo `account_id`/`card_id`, e `amount` do estorno <=
   `amount` da original
 - `DELETE /accounts/:id` e `/cards/:id` sem `cascade=true`: 409 se houver qualquer lançamento
-  associado (mesma regra da Fase 2, agora efetivada)
+  associado (mesma regra da Etapa 2, agora efetivada)
 
 ## Decisões técnicas
 - Divisão de parcelas: `amount_por_parcela = floor(total / N * 100) / 100` para as primeiras
   N-1 parcelas; a última recebe o resíduo (`total - soma das anteriores`), garantindo que a
   soma das parcelas bate exatamente com o total informado
 - Geração de datas das parcelas: mesma regra de dia do mês da data da compra, +1 mês por
-  parcela (sem considerar `closing_day`/`due_day` do cartão nesta fase — isso é refinado na
-  Fase 4)
+  parcela (sem considerar `closing_day`/`due_day` do cartão nesta etapa — isso é refinado na
+  Etapa 4)
 - `is_active`/`is_hidden` como colunas simples em `Account`/`Card` (não uma tabela de auditoria
   separada) — suficiente para o requisito atual; sem necessidade de histórico de quando foi
   desativada/ocultada
 
 ## Frontend (React + Vite + TypeScript)
-Reaproveita client HTTP e guarda de rota da Fase 1; estende as telas de contas/cartões da
-Fase 2.
+Reaproveita client HTTP e guarda de rota da Etapa 1; estende as telas de contas/cartões da
+Etapa 2.
 - Formulário de lançamento: campos de RF-01/02/03; ao escolher cartão como destino, exibe
   opção "parcelar em Nx"; seletor de conta/cartão filtra `is_active=true` e `is_hidden=false`
   via `GET /accounts`/`GET /cards`
 - Tela de extrato: tabela paginada consumindo `GET /transactions`, com filtros de conta/cartão,
   período e categoria; badge de parcela ("2/3") e ícone de estorno quando aplicável
-- Seletor de data (padrão "hoje") nas telas de contas/cartões da Fase 2, refletindo em
+- Seletor de data (padrão "hoje") nas telas de contas/cartões da Etapa 2, refletindo em
   `current_balance`/`current_spending`/`available_limit`
 - Toggle de "ativa/inativa" e "oculta/visível" na listagem de contas/cartões, com opção de
   exibir ocultas (`includeHidden=true`)

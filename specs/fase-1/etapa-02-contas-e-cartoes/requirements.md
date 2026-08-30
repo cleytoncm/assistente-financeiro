@@ -1,8 +1,8 @@
 # Requisitos — Contas e Cartões
 
 ## Contexto
-Depende da Fase 1 (Autenticação e Usuários): toda conta/cartão pertence a um usuário
-autenticado. Fundação de dados do sistema: toda transação futura (Fase 3+) referencia uma
+Depende da Etapa 1 (Autenticação e Usuários): toda conta/cartão pertence a um usuário
+autenticado. Fundação de dados do sistema: toda transação futura (Etapa 3+) referencia uma
 conta bancária ou um cartão de crédito. Sem isso, nenhuma outra feature pode ser implementada.
 
 ## Requisitos funcionais
@@ -26,7 +26,7 @@ existente ou deixá-lo sem vínculo.
   - Vínculo com conta bancária é opcional; se informado, deve referenciar uma conta existente
     do mesmo usuário
   - Cartão sem vínculo ainda exige indicar a conta pagadora no momento de pagar a fatura
-    (tratado na Fase 4 — aqui só cadastramos o cartão)
+    (tratado na Etapa 4 — aqui só cadastramos o cartão)
 
 ### RF-03 — Editar conta ou cartão
 Como usuário, quero editar dados de uma conta ou cartão (nome, limite, vínculo, dias de
@@ -35,10 +35,10 @@ fechamento/vencimento) sem perder o histórico de lançamentos já associados.
 ### RF-04 — Remover conta ou cartão
 Como usuário, quero remover uma conta ou cartão que não uso mais.
 - Critérios de aceite:
-  - Se existirem lançamentos associados (Fase 3+), a remoção é bloqueada ou exige confirmação
-    explícita — decisão de design será detalhada quando a Fase 3 existir; por ora, remoção só
+  - Se existirem lançamentos associados (Etapa 3+), a remoção é bloqueada ou exige confirmação
+    explícita — decisão de design será detalhada quando a Etapa 3 existir; por ora, remoção só
     é permitida para conta/cartão sem nenhum lançamento
-  - **Atualizado na Fase 3** (`specs/03-lancamentos-manuais/requirements.md`, RF-08/RF-09):
+  - **Atualizado na Etapa 3** (`specs/fase-1/etapa-03-lancamentos-manuais/requirements.md`, RF-08/RF-09):
     conta/cartão sem lançamentos continua removida direto como aqui; com lançamentos, o usuário
     passa a poder escolher entre desativar, ocultar ou excluir em cascata
 
@@ -52,31 +52,31 @@ oficial (Bacen/COMPE), e poder cadastrar um banco que não esteja na lista.
 - Critérios de aceite:
   - O catálogo já vem populado via seed com os principais bancos brasileiros (nome + código)
   - O catálogo é compartilhado entre todos os usuários (não é dado pessoal — não tem
-    `user_id`, não é afetado pelo isolamento do RF-04 da Fase 1)
+    `user_id`, não é afetado pelo isolamento do RF-04 da Etapa 1)
   - Qualquer usuário autenticado pode cadastrar um banco novo (nome + código) quando o dele
     não estiver na lista
   - Código do banco é único no catálogo
 
 ## Fora de escopo desta feature
-- Cálculo de saldo por lançamentos (Fase 3)
-- Parcelamento simples no cartão (Fase 3); fechamento/vencimento de fatura e pagamento (Fase 4)
-- Visualização compartilhada por subusuários (Fase 8 — futura; esta fase só modela o dono
-  único de cada conta/cartão via `user_id`)
+- Cálculo de saldo por lançamentos (Etapa 3)
+- Parcelamento simples no cartão (Etapa 3); fechamento/vencimento de fatura e pagamento (Etapa 4)
+- Visualização compartilhada por subusuários (Fase 2, Etapa 2 — pós-MVP; esta etapa só modela
+  o dono único de cada conta/cartão via `user_id`)
 - Moeda no cartão (`Card`) — por ora só a conta bancária tem moeda; se surgir cartão faturado
   em moeda estrangeira, é um campo novo a adicionar quando isso existir
 - Conversão de câmbio / consolidação de patrimônio entre moedas — metas financeiras e
-  patrimônio fazem parte da visão do produto (`constitution.md`), mas ainda não têm fase
-  própria no roadmap atual; esta fase só grava a moeda de cada conta
+  patrimônio fazem parte da visão do produto (`constitution.md`), mas ainda não têm etapa
+  própria no roadmap atual; esta etapa só grava a moeda de cada conta
 
 ## Decisões confirmadas
-- O vínculo `linked_account_id` do cartão é apenas a conta pagadora **padrão**. Na Fase 4
+- O vínculo `linked_account_id` do cartão é apenas a conta pagadora **padrão**. Na Etapa 4
   (fatura), o usuário pode escolher pagar uma fatura específica com outra conta, sem alterar
   o vínculo cadastrado do cartão. Cartão sem vínculo continua exigindo escolha manual da conta
   pagadora em toda fatura (RF-02).
 
-## Frontend desta fase (painel web)
-Construído junto com o backend desta fase (não é fase isolada — ver roadmap na
-`constitution.md`). Todas as páginas exigem login (guarda de rota da Fase 1).
+## Frontend desta etapa (painel web)
+Construído junto com o backend desta etapa (não é etapa isolada — ver roadmap na
+`constitution.md`). Todas as páginas exigem login (guarda de rota da Etapa 1).
 - Tela de listagem de contas e cartões (RF-05), mostrando qual cartão está vinculado a qual
   conta
 - Formulário de criar/editar conta (RF-01, RF-03): nome, banco (selecionado do catálogo —
@@ -84,4 +84,4 @@ Construído junto com o backend desta fase (não é fase isolada — ver roadmap
 - Formulário de criar/editar cartão (RF-02, RF-03): nome, limite, dia de fechamento, dia de
   vencimento, vínculo opcional com conta existente
 - Ação de remover conta/cartão (RF-04), com mensagem de bloqueio se houver lançamentos
-  associados (a partir da Fase 3)
+  associados (a partir da Etapa 3)

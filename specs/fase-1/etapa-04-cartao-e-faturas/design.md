@@ -13,7 +13,7 @@ Invoice (fatura)
   created_at
   unique(card_id, period_year, period_month)
 
-Transaction (lançamento — Fase 3, alterado nesta fase)
+Transaction (lançamento — Etapa 3, alterado nesta etapa)
   ... campos já existentes ...
   invoice_id (FK Invoice, NULLABLE)  -- preenchido só quando card_id está preenchido;
                                       -- sempre nulo em lançamentos de account_id
@@ -42,18 +42,18 @@ function status(invoice, today):
 
 Calculado a cada leitura (`GET /cards/:id/invoices`, `GET /invoices/:id`) — sem cron, sem
 coluna de status para manter sincronizada, consistente com o mesmo raciocínio já usado para
-saldo "até uma data" na Fase 3.
+saldo "até uma data" na Etapa 3.
 
 ## Atribuição de lançamento a uma fatura (RF-01)
 
-Ao criar ou editar uma `Transaction` com `card_id` preenchido (Fase 3, `POST /transactions` e
+Ao criar ou editar uma `Transaction` com `card_id` preenchido (Etapa 3, `POST /transactions` e
 `PATCH /transactions/:id`), o backend resolve `invoice_id` assim:
 1. Busca, entre as faturas existentes do cartão, uma cujo `closing_date >= transaction.date` e
    cujo período anterior não cobre essa data (ou seja, a primeira fatura "aberta pra frente"
    que ainda não fechou antes dessa data)
 2. Se não existir, cria a próxima fatura em sequência a partir da última existente (ou da
    primeira, calculada a partir de `card.closing_day`/`due_day`, se o cartão ainda não tem
-   nenhuma), repetindo até cobrir a data — cobre o caso de uma parcela (Fase 3, RF-02) cair
+   nenhuma), repetindo até cobrir a data — cobre o caso de uma parcela (Etapa 3, RF-02) cair
    vários meses à frente e nenhuma fatura intermediária existir ainda
 3. Faturas intermediárias criadas nesse processo (que ainda não têm lançamento próprio) nascem
    vazias, com `closing_date`/`due_date` já calculadas — elas só existem fisicamente porque o
@@ -61,7 +61,7 @@ Ao criar ou editar uma `Transaction` com `card_id` preenchido (Fase 3, `POST /tr
 
 `closing_date`/`due_date` de uma nova fatura = mês seguinte à última fatura existente do
 cartão (ou ao mês de criação do cartão, se for a primeira), no dia `closing_day`/`due_day`
-cadastrado no `Card` (Fase 2).
+cadastrado no `Card` (Etapa 2).
 
 ## Trava de edição (RF-07) e lançamento retroativo (RF-06)
 
@@ -85,7 +85,7 @@ cadastrado no `Card` (Fase 2).
 ```
 GET    /cards/:id/invoices                 lista faturas do cartão (status calculado), paginado
 GET    /invoices/:id                       detalhe da fatura (inclui status, total calculado)
-GET    /invoices/:id/transactions          lançamentos daquela fatura (reaproveita paginação da Fase 3)
+GET    /invoices/:id/transactions          lançamentos daquela fatura (reaproveita paginação da Etapa 3)
 
 PATCH  /invoices/:id                       { closing_date?, due_date? }  (RF-02)
   - só permitido enquanto status != 'paga'
@@ -97,24 +97,24 @@ POST   /invoices/:id/pay
   -> permitido em qualquer status (inclusive 'aberta' — pagamento antecipado, RF-05)
 ```
 
-`POST /transactions` e `PATCH /transactions/:id` (Fase 3) passam a resolver `invoice_id`
+`POST /transactions` e `PATCH /transactions/:id` (Etapa 3) passam a resolver `invoice_id`
 automaticamente quando `card_id` está envolvido (ver seção acima), sem mudança na assinatura
 pública desses endpoints — exceto o campo opcional `confirmPaymentAdjustment` (RF-06) e o
 possível campo de resposta `invoicePaymentAdjustment`.
 
-Autenticação: todo endpoint exige `requireAuth` (Fase 1); toda query de `Invoice` passa pelo
+Autenticação: todo endpoint exige `requireAuth` (Etapa 1); toda query de `Invoice` passa pelo
 helper `scopedToUser`.
 
 ## Validações
 - `PATCH /invoices/:id` (datas): `closing_date < due_date`; bloqueado se `paid_at` não for nulo
 - `POST /invoices/:id/pay`: `account_id` deve pertencer ao usuário autenticado e estar
-  `is_active = true` (Fase 3); fatura não pode já estar paga (`paid_at` nulo é pré-condição)
-- Criar/editar `Transaction` com `card_id`: mesmas validações da Fase 3, mais a resolução de
+  `is_active = true` (Etapa 3); fatura não pode já estar paga (`paid_at` nulo é pré-condição)
+- Criar/editar `Transaction` com `card_id`: mesmas validações da Etapa 3, mais a resolução de
   `invoice_id` acima (nunca vem do cliente, sempre calculado no backend)
 
 ## Decisões técnicas
 - Sem coluna de status persistida em `Invoice` (ver "Status derivado" acima) — evita job
-  agendado e mantém consistência com o padrão "calculado até uma data" já usado na Fase 3
+  agendado e mantém consistência com o padrão "calculado até uma data" já usado na Etapa 3
 - `payment_transaction_id` como `UNIQUE` garante 1:1 entre fatura paga e seu lançamento de
   pagamento, permitindo localizar e editar esse lançamento quando o total muda (RF-06)
 - Criação de faturas intermediárias vazias (passo 2 da atribuição) é aceitável mesmo que o
@@ -122,10 +122,10 @@ helper `scopedToUser`.
   atribuição em vez de tentar "pular" períodos sem persistir nada
 
 ## Frontend (React + Vite + TypeScript)
-Reaproveita client HTTP e guarda de rota da Fase 1; estende as telas de cartão da Fase 2/3.
+Reaproveita client HTTP e guarda de rota da Etapa 1; estende as telas de cartão da Etapa 2/3.
 - Tela de fatura: lista de faturas do cartão com badge de status (aberta/fechada/atrasada/paga)
   usando `GET /cards/:id/invoices`; detalhe mostra lançamentos (`GET /invoices/:id/transactions`,
-  reaproveitando a tabela de extrato da Fase 3) e o total calculado
+  reaproveitando a tabela de extrato da Etapa 3) e o total calculado
 - Ação de editar fechamento/vencimento de uma fatura (`PATCH /invoices/:id`), desabilitada se
   paga
 - Ação de pagar fatura: seletor de conta (pré-selecionado se `Card.linked_account_id` existir),
@@ -133,4 +133,4 @@ Reaproveita client HTTP e guarda de rota da Fase 1; estende as telas de cartão 
 - Ao criar/editar um lançamento de cartão cuja fatura de destino já está paga, exibe o modal de
   confirmação com o novo total antes de enviar `confirmPaymentAdjustment: true`
 - Mensagem de bloqueio ao tentar editar/remover lançamento de fatura não aberta (reaproveita o
-  formulário de lançamento da Fase 3, desabilitando salvar/remover quando a API retornar 409)
+  formulário de lançamento da Etapa 3, desabilitando salvar/remover quando a API retornar 409)

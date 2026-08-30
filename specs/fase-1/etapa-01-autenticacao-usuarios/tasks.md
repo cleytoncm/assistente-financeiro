@@ -1,7 +1,7 @@
 # Tasks — Autenticação e Usuários
 
 Status: não iniciado. Nenhuma task começa antes de requirements.md e design.md serem
-confirmados pelo usuário. Esta fase bloqueia o início da Fase 2 (Contas e Cartões), pois
+confirmados pelo usuário. Esta etapa bloqueia o início da Etapa 2 (Contas e Cartões), pois
 todas as tabelas seguintes dependem de `user_id` vindo de um usuário real autenticado.
 
 Política de testes (ver `constitution.md`, "Estratégia de Testes"): toda task de feature

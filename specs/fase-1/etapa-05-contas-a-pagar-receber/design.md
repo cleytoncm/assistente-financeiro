@@ -38,7 +38,7 @@ Payable (parcela — avulsa quando group_id é nulo, ou pertencente a um Payable
 ```
 
 Notas:
-- Nenhuma coluna de status persistida em `Payable` — mesmo padrão de `Invoice` na Fase 4. Status
+- Nenhuma coluna de status persistida em `Payable` — mesmo padrão de `Invoice` na Etapa 4. Status
   é sempre calculado na leitura (ver seção abaixo).
 - `PayableGroup` não existe para uma conta a pagar/receber avulsa (RF-01): a `Payable` avulsa
   carrega `description`/`counterparty`/`account_id` diretamente, com `group_id` nulo e
@@ -64,14 +64,14 @@ function status(payable, today):
 ```
 
 Calculado a cada leitura (`GET /payables`, `GET /payable-groups/:id`), sem cron — mesmo
-raciocínio da Fase 4 para status de fatura.
+raciocínio da Etapa 4 para status de fatura.
 
 ## Criação de parcelas (RF-02, RF-03)
 
 **Parcelada (`recurrence_type='installment'`)**: cria o `PayableGroup` e, na mesma operação,
 todas as `installment_count` parcelas de uma vez — `due_date` de cada parcela = `start_date` +
 `(installment_number - 1)` meses, ajustado para o dia `due_day` (mesma regra de "dia do mês" do
-parcelamento de cartão na Fase 3). `amount` de cada parcela = `PayableGroup.amount` (valor por
+parcelamento de cartão na Etapa 3). `amount` de cada parcela = `PayableGroup.amount` (valor por
 parcela informado pelo usuário, sem cálculo de juros).
 
 **Recorrente (`recurrence_type='recurring'`)**: cria o `PayableGroup` e um primeiro lote de 6
@@ -95,7 +95,7 @@ ativo do usuário — desprezível mesmo com muitos grupos.
 
 ## Pagamento (RF-05)
 
-`POST /payables/:id/pay` cria uma `Transaction` (Fase 3) com `type = payable.type`, `amount =
+`POST /payables/:id/pay` cria uma `Transaction` (Etapa 3) com `type = payable.type`, `amount =
 paid_amount` (ou `payable.amount` se `paid_amount` omitido), `account_id` informado no corpo,
 `date` = hoje (ou informada), sem `category_id` (usuário categoriza depois pelo extrato, se
 quiser). Grava `paid_transaction_id`, `paid_amount`, `paid_at` na `Payable`.
@@ -129,18 +129,18 @@ quiser). Grava `paid_transaction_id`, `paid_amount`, `paid_at` na `Payable`.
 
 ## Projeção de saldo (RF-11)
 
-Estende o cálculo de saldo da Fase 3 (`GET /accounts?date=`):
+Estende o cálculo de saldo da Etapa 3 (`GET /accounts?date=`):
 
 ```
 saldo_projetado(account, date) =
-  saldo_atual(account, date)                                   -- Fase 3, só Transactions
+  saldo_atual(account, date)                                   -- Etapa 3, só Transactions
   - SUM(Payable.amount WHERE account_id=account AND type='expense'
         AND status(payable, hoje) IN ('pendente','vence_hoje','atrasada') AND due_date <= date)
   + SUM(Payable.amount WHERE account_id=account AND type='income'
         AND status(payable, hoje) IN ('pendente','vence_hoje','atrasada') AND due_date <= date)
 ```
 
-`current_balance` (Fase 3) continua existindo sem mudança (saldo real, só `Transaction`); um
+`current_balance` (Etapa 3) continua existindo sem mudança (saldo real, só `Transaction`); um
 novo campo `projected_balance` é adicionado à resposta de `GET /accounts`, calculado como acima.
 Parcelas sem `account_id` não entram em nenhum `projected_balance` de conta específica — só no
 resumo geral (`GET /payables/summary`, abaixo).
@@ -188,12 +188,12 @@ GET    /payables/summary
   -> { totalPayable, totalReceivable } agregados de parcelas não pagas/não canceladas com
      due_date <= until, sem quebra por conta (RF-11, resumo geral)
 
-GET    /accounts?date=YYYY-MM-DD    (estende Fase 3)
+GET    /accounts?date=YYYY-MM-DD    (estende Etapa 3)
   -> adiciona `projected_balance` calculado até `date` (default hoje), além do `current_balance`
      já existente
 ```
 
-Autenticação: todo endpoint exige `requireAuth` (Fase 1); toda query de `PayableGroup` e
+Autenticação: todo endpoint exige `requireAuth` (Etapa 1); toda query de `PayableGroup` e
 `Payable` passa pelo helper `scopedToUser`. A extensão do horizonte de recorrência (ver acima)
 roda dentro do handler de `GET /payables` e `GET /payable-groups`, sempre restrita ao
 `user_id` autenticado da própria request.
@@ -202,9 +202,9 @@ roda dentro do handler de `GET /payables` e `GET /payable-groups`, sempre restri
 - `type`: `income` ou `expense`
 - `amount` > 0 (tanto no grupo quanto na parcela avulsa/individual)
 - `due_date`/`due_day`: `due_day` entre 1 e 31 (dias inexistentes no mês, ex. 31 em fevereiro,
-  ajustam para o último dia do mês — mesma regra já usada no parcelamento de cartão da Fase 3)
+  ajustam para o último dia do mês — mesma regra já usada no parcelamento de cartão da Etapa 3)
 - `account_id`, se informado: deve pertencer ao usuário autenticado e estar `is_active = true`
-  (Fase 3)
+  (Etapa 3)
 - `installment_count`: obrigatório e `>= 2` quando `recurrence_type = 'installment'`; deve ser
   omitido/nulo quando `recurrence_type = 'recurring'`
 - `POST /payables/:id/pay`: bloqueado se status já é `paga` ou `cancelada`; `account_id`
@@ -219,20 +219,20 @@ roda dentro do handler de `GET /payables` e `GET /payable-groups`, sempre restri
 - `type` de `Payable`/`PayableGroup` reaproveita o enum `income`/`expense` de `Transaction` —
   evita um segundo vocabulário para o mesmo conceito e torna a criação da `Transaction` de
   pagamento (RF-05) uma cópia direta do campo, sem mapeamento
-- Sem coluna de status persistida (mesmo racional da Fase 4 para `Invoice`) — todas as
+- Sem coluna de status persistida (mesmo racional da Etapa 4 para `Invoice`) — todas as
   transições por data (`pendente → vence_hoje → atrasada`) são automáticas e sem custo de
   manutenção
 - Geração de horizonte de recorrência via checagem na leitura (sem Cloud Scheduler/cron) —
   consistente com a decisão de manter a infra de jobs agendados em aberto (ver
   `constitution.md`, "Infraestrutura de deploy")
 - Lote de 6 meses e limiar de extensão de 3 meses restantes são constantes de aplicação, não
-  configuráveis pelo usuário nesta fase — simples o bastante para não precisar de tela de
+  configuráveis pelo usuário nesta etapa — simples o bastante para não precisar de tela de
   configuração, ajustável depois se necessário
 - `paid_transaction_id` como `UNIQUE` garante 1:1 entre parcela paga e sua `Transaction` de
   pagamento, permitindo localizar e excluir essa transação em cascata (RF-09/RF-10)
 
 ## Frontend (React + Vite + TypeScript)
-Reaproveita client HTTP e guarda de rota da Fase 1; estende as telas de contas da Fase 2/3.
+Reaproveita client HTTP e guarda de rota da Etapa 1; estende as telas de contas da Etapa 2/3.
 - Listagem de contas a pagar/receber: consome `GET /payables` (avulsas) e `GET /payable-groups`
   (grupos, mostrando próxima parcela e contagem), com filtro por tipo/status e um seletor de
   data que consulta `GET /payables/summary?until=` para o total previsto
@@ -245,5 +245,5 @@ Reaproveita client HTTP e guarda de rota da Fase 1; estende as telas de contas d
   pré-preenchido e editável)
 - Ação de cancelar (campo de motivo opcional) e excluir parcela, com modal de confirmação extra
   exibindo o valor/data da `Transaction` quando a parcela já está paga
-- Seletor de data nas telas de conta (Fase 2/3) passa a exibir `projected_balance` ao lado do
+- Seletor de data nas telas de conta (Etapa 2/3) passa a exibir `projected_balance` ao lado do
   `current_balance` já existente

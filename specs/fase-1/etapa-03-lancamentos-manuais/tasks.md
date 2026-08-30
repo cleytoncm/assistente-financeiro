@@ -1,6 +1,6 @@
 # Tasks — Lançamentos Manuais
 
-Status: não iniciado. Depende da Fase 1 (Autenticação) e da Fase 2 (Contas e Cartões)
+Status: não iniciado. Depende da Etapa 1 (Autenticação) e da Etapa 2 (Contas e Cartões)
 implementadas. Nenhuma task começa antes de requirements.md e design.md serem confirmados
 pelo usuário.
 
@@ -62,9 +62,12 @@ abaixo já inclui o teste correspondente — nenhuma é considerada concluída s
       componente + E2E (fluxo de exclusão em cascata)
       (requisito: RF-09)
 
-## Backlog de fases futuras (specs ainda não escritas)
-- 04-cartao-e-faturas — specs escritas em `specs/04-cartao-e-faturas/`
-- 05-contas-a-pagar-receber — specs escritas em `specs/05-contas-a-pagar-receber/`
-- 06-importacao-arquivos
-- 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram)
-- 08-subusuarios (visualização compartilhada)
+## Backlog de fases/etapas futuras
+- Etapa 4 (Cartão e faturas) — specs escritas em `specs/fase-1/etapa-04-cartao-e-faturas/`
+- Etapa 5 (Contas a pagar/receber) — specs escritas em
+  `specs/fase-1/etapa-05-contas-a-pagar-receber/`
+- Etapa 6 (Importação de arquivos) — specs escritas em
+  `specs/fase-1/etapa-06-importacao-arquivos/`
+- Fase 2, Etapa 1 — bot conversacional (sem fatia de painel web — interface própria via
+  Telegram) (spec ainda não escrita)
+- Fase 2, Etapa 2 — subusuários (visualização compartilhada) (spec ainda não escrita)

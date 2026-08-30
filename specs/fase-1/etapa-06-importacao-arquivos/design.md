@@ -27,7 +27,7 @@ ImportedRow (linha extraída de um lote)
   created_transaction_id (FK Transaction, NULLABLE, UNIQUE),
   created_at
 
-Transaction (Fase 3, alterada nesta fase)
+Transaction (Etapa 3, alterada nesta etapa)
   ... campos já existentes ...
   external_id (VARCHAR, NULLABLE)          -- FITID, preenchido só quando veio de import OFX
   import_batch_id (FK ImportBatch, NULLABLE) -- rastreabilidade: de qual lote essa transaction veio
@@ -151,7 +151,7 @@ POST   /import-batches/:id/confirm
   -> bloqueado se ImportBatch.status != 'aguardando_revisao'
 ```
 
-Autenticação: todo endpoint exige `requireAuth` (Fase 1); toda query de `ImportBatch`/
+Autenticação: todo endpoint exige `requireAuth` (Etapa 1); toda query de `ImportBatch`/
 `ImportedRow` passa pelo helper `scopedToUser`. O endpoint interno de processamento não usa
 `requireAuth` (não é chamado pelo usuário) — usa a validação própria do Cloud Tasks.
 
@@ -167,7 +167,7 @@ Autenticação: todo endpoint exige `requireAuth` (Fase 1); toda query de `Impor
 ## Decisões técnicas
 - Fila via Cloud Tasks (não Cloud Scheduler/cron) — cada upload gera exatamente um job pontual,
   diferente de uma rotina recorrente; alinhado com a decisão de não introduzir "CPU sempre
-  alocada" nem GCS só para essa fase
+  alocada" nem GCS só para essa etapa
 - `raw_content` como `BYTEA` em Postgres (não um bucket) — arquivos de extrato/fatura pessoais
   são pequenos (KBs a poucos MBs), e o conteúdo é efêmero (janela de processamento), então não
   compensa uma peça de infra de storage de objetos só para isso
@@ -181,8 +181,8 @@ Autenticação: todo endpoint exige `requireAuth` (Fase 1); toda query de `Impor
   sistema para uma única linha ruim
 
 ## Frontend (React + Vite + TypeScript)
-Reaproveita client HTTP e guarda de rota da Fase 1; estende as telas de conta/cartão da Fase 2 e
-o extrato da Fase 3.
+Reaproveita client HTTP e guarda de rota da Etapa 1; estende as telas de conta/cartão da Etapa 2 e
+o extrato da Etapa 3.
 - Tela de upload: seleção de arquivo, formato, destino (conta ou cartão, filtrado conforme o
   formato escolhido) e modo; ao enviar, redireciona para uma tela de acompanhamento que faz
   polling de `GET /import-batches/:id` até sair de `processando`

@@ -40,13 +40,13 @@ GET  /auth/me          (autenticado) -> { id, name, email }
 pessoal; revisitar se o backend escalar para múltiplas instâncias simultâneas.
 
 ## Regra de isolamento (RF-04) — helper centralizado
-Toda query de dados de outras fases deve passar por um helper único, ex.:
+Toda query de dados de outras etapas deve passar por um helper único, ex.:
 `scopedToUser(userId, query)`, em vez de cada endpoint reimplementar o filtro por `user_id`.
-Isso é o que permite, na fase futura de subusuários, trocar esse helper para também aceitar
-"usuários com acesso concedido" sem reescrever cada endpoint individualmente.
+Isso é o que permite, na Fase 2, Etapa 2 (subusuários — pós-MVP), trocar esse helper para
+também aceitar "usuários com acesso concedido" sem reescrever cada endpoint individualmente.
 
-## Nota de extensibilidade — subusuários (fase futura, não implementar agora)
-Quando essa fase existir, o modelo provável é uma tabela de concessão de acesso, ex.:
+## Nota de extensibilidade — subusuários (Fase 2, Etapa 2 — pós-MVP, não implementar agora)
+Quando essa etapa existir, o modelo provável é uma tabela de concessão de acesso, ex.:
 ```
 UserAccess
   id, owner_user_id (FK User), viewer_user_id (FK User), permission (ex.: 'view'), created_at
@@ -55,9 +55,10 @@ E o helper `scopedToUser` passaria a resolver "todos os `owner_user_id` que `vie
 pode ver" antes de filtrar os dados. Não criar essa tabela agora — só manter o acesso a dados
 centralizado no helper para que essa mudança não exija tocar em todos os endpoints depois.
 
-## Integração com o bot (Telegram) — decisão adiada para a fase do bot
+## Integração com o bot (Telegram) — decisão adiada para a Fase 2, Etapa 1 (bot conversacional)
 O bot precisa mapear um `chat_id` do Telegram para um `user_id` do sistema (ex.: comando
-`/vincular <código>` gerado no painel web). Detalhar no design da fase "Bot conversacional".
+`/vincular <código>` gerado no painel web). Detalhar no design da Fase 2, Etapa 1 ("Bot
+conversacional").
 
 ## Frontend (React + Vite + TypeScript)
 - SPA separada do backend, consumindo a API REST via `fetch`/`axios`
@@ -65,7 +66,7 @@ O bot precisa mapear um `chat_id` do Telegram para um `user_id` do sistema (ex.:
   header `Authorization: Bearer <token>` em toda chamada autenticada
 - Um interceptor trata resposta 401 globalmente: limpa o `localStorage` e redireciona para
   `/login`
-- Páginas desta fase: `/login`, `/cadastro`; demais rotas do painel exigem token (guarda de
+- Páginas desta etapa: `/login`, `/cadastro`; demais rotas do painel exigem token (guarda de
   rota simples checando presença do token antes de renderizar)
 
 ## Impacto no deploy GCP

@@ -1,16 +1,16 @@
 # Tasks — Contas e Cartões
 
-Status: não iniciado. Depende da Fase 1 (Autenticação e Usuários) estar implementada —
-`requireAuth` e a tabela `users` já existem antes desta fase começar. Nenhuma task começa
+Status: não iniciado. Depende da Etapa 1 (Autenticação e Usuários) estar implementada —
+`requireAuth` e a tabela `users` já existem antes desta etapa começar. Nenhuma task começa
 antes de requirements.md e design.md serem confirmados pelo usuário.
 
 Política de testes (ver `constitution.md`, "Estratégia de Testes"): toda task de feature
 abaixo já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
 
 - [ ] T01 — Setup do projeto Node.js/TypeScript (estrutura de pastas, lint, scripts de dev)
-      (requisito: base para todas as tasks abaixo — pode ser feito junto com a Fase 1)
+      (requisito: base para todas as tasks abaixo — pode ser feito junto com a Etapa 1)
 - [ ] T02 — Setup do banco de dados (PostgreSQL) e ORM (Prisma), migration inicial vazia
-      (requisito: base para RF-01..RF-05 — pode ser feito junto com a Fase 1)
+      (requisito: base para RF-01..RF-05 — pode ser feito junto com a Etapa 1)
 - [ ] T03 — Migration: tabela `banks` + seed com principais bancos brasileiros (nome + código
       Bacen/COMPE)
       (requisito: RF-06)
@@ -52,12 +52,16 @@ abaixo já inclui o teste correspondente — nenhuma é considerada concluída s
       teste de componente
       (requisito: RF-04)
 
-## Backlog de fases futuras (specs ainda não escritas)
-Cada fase abaixo inclui sua própria fatia de frontend (React), não há mais uma fase isolada
+## Backlog de fases/etapas futuras
+Cada etapa abaixo inclui sua própria fatia de frontend (React), não há mais uma etapa isolada
 de "painel web" — ver roadmap em `constitution.md`.
-- 03-lancamentos-manuais — specs escritas em `specs/03-lancamentos-manuais/`
-- 04-cartao-e-faturas — specs escritas em `specs/04-cartao-e-faturas/`
-- 05-contas-a-pagar-receber — specs escritas em `specs/05-contas-a-pagar-receber/`
-- 06-importacao-arquivos
-- 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram)
-- 08-subusuarios (visualização compartilhada)
+- Etapa 3 (Lançamentos manuais) — specs escritas em
+  `specs/fase-1/etapa-03-lancamentos-manuais/`
+- Etapa 4 (Cartão e faturas) — specs escritas em `specs/fase-1/etapa-04-cartao-e-faturas/`
+- Etapa 5 (Contas a pagar/receber) — specs escritas em
+  `specs/fase-1/etapa-05-contas-a-pagar-receber/`
+- Etapa 6 (Importação de arquivos) — specs escritas em
+  `specs/fase-1/etapa-06-importacao-arquivos/`
+- Fase 2, Etapa 1 — bot conversacional (sem fatia de painel web — interface própria via
+  Telegram) (spec ainda não escrita)
+- Fase 2, Etapa 2 — subusuários (visualização compartilhada) (spec ainda não escrita)

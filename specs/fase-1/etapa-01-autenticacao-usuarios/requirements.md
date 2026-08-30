@@ -49,9 +49,9 @@ Como sistema, quero limitar tentativas de login para dificultar ataques de forç
     tentativas por 15 minutos)
   - Acima do limite, a requisição retorna 429, sem revelar detalhes sobre a conta-alvo
 
-## Fora de escopo desta feature (fase futura)
+## Fora de escopo desta feature (Fase 2 — pós-MVP)
 - **Subusuários**: um usuário principal poder cadastrar subusuários que visualizam (somente
-  leitura) seus dados. Fica para uma fase própria, mas o design desta feature deve evitar
+  leitura) seus dados. Fica para a Fase 2, Etapa 2, mas o design desta feature deve evitar
   decisões que impeçam essa extensão depois (ver design.md — nota de extensibilidade).
 - Recuperação de senha, verificação de e-mail, login social — não solicitados ainda.
 
@@ -59,8 +59,8 @@ Como sistema, quero limitar tentativas de login para dificultar ataques de forç
 - Formato do token: **JWT stateless** (sem tabela de sessão), dado uso pessoal — sem suporte a
   revogação remota de login no MVP; revisitar se isso se tornar necessário.
 
-## Frontend desta fase (painel web)
-Construído junto com o backend desta fase (não é fase isolada — ver roadmap na
+## Frontend desta etapa (painel web)
+Construído junto com o backend desta etapa (não é etapa isolada — ver roadmap na
 `constitution.md`).
 - Tela de cadastro (RF-01): formulário nome/e-mail/senha, chama `POST /auth/register`
 - Tela de login (RF-02): formulário e-mail/senha, chama `POST /auth/login`, guarda o token

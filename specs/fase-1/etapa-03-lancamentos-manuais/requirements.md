@@ -1,10 +1,10 @@
 # Requisitos — Lançamentos Manuais
 
 ## Contexto
-Depende da Fase 1 (Autenticação e Usuários) e da Fase 2 (Contas e Cartões): todo lançamento
+Depende da Etapa 1 (Autenticação e Usuários) e da Etapa 2 (Contas e Cartões): todo lançamento
 pertence a um usuário autenticado e está associado a uma conta bancária ou a um cartão de
-crédito já cadastrado. Esta fase entrega o núcleo transacional do sistema — sem ela, contas e
-cartões da Fase 2 não têm movimentação nem saldo real.
+crédito já cadastrado. Esta etapa entrega o núcleo transacional do sistema — sem ela, contas e
+cartões da Etapa 2 não têm movimentação nem saldo real.
 
 ## Requisitos funcionais
 
@@ -27,7 +27,7 @@ manualmente.
 - Critérios de aceite:
   - Parcelamento só se aplica a lançamentos de **cartão** (`type = expense`); lançamento de
     conta bancária é sempre avulso — parcelamento fora do cartão (ex.: crediário/financiamento
-    direto com uma loja) **não** é tratado aqui, fica para a Fase 5 (Contas a pagar/receber),
+    direto com uma loja) **não** é tratado aqui, fica para a Etapa 5 (Contas a pagar/receber),
     que é o lugar certo para obrigações futuras agendadas (ver "Fora de escopo")
   - Usuário informa o valor **total** da compra e o número de parcelas (N ≥ 2); o sistema
     divide automaticamente em N lançamentos, ajustando o arredondamento (centavos) na última
@@ -46,7 +46,7 @@ Como usuário, quero categorizar um lançamento para organizar meus gastos e rec
   - Cada categoria pertence a um tipo fixo (`income` ou `expense`); só é possível associar uma
     categoria cujo tipo bate com o tipo do lançamento
   - O catálogo de categorias já vem populado via seed com categorias comuns, compartilhado
-    entre todos os usuários (mesmo padrão do catálogo de bancos da Fase 2 — RF-06)
+    entre todos os usuários (mesmo padrão do catálogo de bancos da Etapa 2 — RF-06)
   - Qualquer usuário autenticado pode criar categorias próprias (visíveis só para ele),
     seguindo o mesmo tipo fixo (`income`/`expense`)
 
@@ -94,12 +94,12 @@ lançamentos, como alternativa a excluir definitivamente.
     ativa ou desativada
   - Ambas as ações estão sempre disponíveis, mesmo em conta/cartão sem nenhum lançamento
 
-### RF-09 — Remover conta/cartão com lançamentos (finaliza decisão adiada da Fase 2)
+### RF-09 — Remover conta/cartão com lançamentos (finaliza decisão adiada da Etapa 2)
 Como usuário, quero poder remover definitivamente uma conta/cartão mesmo que já tenha
 lançamentos, entendendo que isso apaga todo o histórico associado.
 - Critérios de aceite:
   - Conta/cartão **sem** nenhum lançamento: remoção continua direta e simples, sem confirmação
-    extra (comportamento já previsto na Fase 2)
+    extra (comportamento já previsto na Etapa 2)
   - Conta/cartão **com** lançamentos: ao tentar remover, o usuário vê um aviso claro de que a
     exclusão é definitiva e irreversível, com três opções: (1) desativar (RF-08), (2) ocultar
     (RF-08), ou (3) excluir em cascata (remove a conta/cartão e todos os lançamentos
@@ -114,35 +114,35 @@ cartão, numa data específica — com hoje como padrão.
     lançamentos com data menor ou igual à informada — permite ver o saldo de hoje, um saldo
     projetado (data futura) ou um saldo histórico (data passada)
   - Cartão já expõe "gasto atual" e "limite disponível" calculados da mesma forma, mesmo sem o
-    ciclo de fatura da Fase 4
+    ciclo de fatura da Etapa 4
 
 ## Fora de escopo desta feature
 - **Crediário/financiamento fora do cartão** (ex.: compra parcelada direto com uma loja, sem
   ser no cartão de crédito, mesmo que o pagamento saia de uma conta bancária): não é um
-  "lançamento" avulso, é uma obrigação futura agendada — fica para a **Fase 5 (Contas a
-  pagar/receber)**. **Anotação para não esquecer ao especificar a Fase 5**: cobrir esse cenário
+  "lançamento" avulso, é uma obrigação futura agendada — fica para a **Etapa 5 (Contas a
+  pagar/receber)**. **Anotação para não esquecer ao especificar a Etapa 5**: cobrir esse cenário
   lá (ex.: uma "conta a pagar" recorrente/parcelada não vinculada a cartão).
 - Fatura de cartão: fechamento, vencimento, conta pagadora, agrupamento de parcelas em fatura
-  mensal (Fase 4) — nesta fase o cartão só acumula lançamentos e parcelas soltas, sem ciclo de
+  mensal (Etapa 4) — nesta etapa o cartão só acumula lançamentos e parcelas soltas, sem ciclo de
   fatura
 - Contas a pagar/receber, agendamento e recorrência de lançamentos fora do parcelamento de
-  cartão (Fase 5)
-- Importação de arquivos (Fase 6)
+  cartão (Etapa 5)
+- Importação de arquivos (Etapa 6)
 
 ## Decisões confirmadas
 - Categorias seguem o mesmo padrão de catálogo compartilhado + personalização por usuário já
-  usado para bancos na Fase 2 (RF-06 daquela fase)
+  usado para bancos na Etapa 2 (RF-06 daquela etapa)
 
-## Frontend desta fase (painel web)
-Construído junto com o backend desta fase (não é fase isolada — ver roadmap na
-`constitution.md`). Todas as páginas exigem login (guarda de rota da Fase 1).
+## Frontend desta etapa (painel web)
+Construído junto com o backend desta etapa (não é etapa isolada — ver roadmap na
+`constitution.md`). Todas as páginas exigem login (guarda de rota da Etapa 1).
 - Tela de lançamento (RF-01, RF-02, RF-03): formulário com tipo, valor, data, descrição,
   conta/cartão (só ativos e não ocultos), categoria (filtrada pelo tipo escolhido), e opção de
   parcelamento quando o destino é um cartão
 - Tela de extrato (RF-07): lista paginada de lançamentos com filtros de conta/cartão, período e
   categoria; exibe indicação de parcela (ex.: "2/3") e de estorno vinculado
 - Seletor de data para saldo/gasto atual (RF-10), com "hoje" como padrão, nas telas de contas
-  e cartões (estendendo a listagem da Fase 2)
+  e cartões (estendendo a listagem da Etapa 2)
 - Ações de editar/remover lançamento (RF-04, RF-05), com o diálogo de escopo
   (parcela única vs. parcelas restantes) quando aplicável
 - Fluxo de remoção de conta/cartão (RF-09) com o modal de 3 opções (desativar/ocultar/excluir

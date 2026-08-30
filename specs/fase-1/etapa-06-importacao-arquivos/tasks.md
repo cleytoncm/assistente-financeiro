@@ -1,6 +1,6 @@
 # Tasks — Importação de Arquivos
 
-Status: não iniciado. Depende da Fase 1, Fase 2 e Fase 3 implementadas. Nenhuma task começa
+Status: não iniciado. Depende da Etapa 1, Etapa 2 e Etapa 3 implementadas. Nenhuma task começa
 antes de requirements.md e design.md serem confirmados pelo usuário.
 
 Política de testes (ver `constitution.md`, "Estratégia de Testes"): toda task de feature abaixo
@@ -58,7 +58,7 @@ já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
       (requisito: RF-01, RF-02)
 - [ ] T17 — Tela de revisão (edição inline, badge de duplicata suspeita, resumo de aceitas
       automaticamente, descarte por linha, confirmar lote) + teste de componente + E2E
-      (importar CSV em modo staged, revisar e confirmar, ver lançamentos no extrato da Fase 3)
+      (importar CSV em modo staged, revisar e confirmar, ver lançamentos no extrato da Etapa 3)
       (requisito: RF-06)
 - [ ] T18 — Tela de histórico de importações, com link para revisão pendente + teste de
       componente
@@ -67,6 +67,7 @@ já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
       componente
       (requisito: RF-07)
 
-## Backlog de fases futuras (specs ainda não escritas)
-- 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram)
-- 08-subusuarios (visualização compartilhada)
+## Backlog de fases/etapas futuras
+- Fase 2, Etapa 1 — bot conversacional (sem fatia de painel web — interface própria via
+  Telegram) (spec ainda não escrita)
+- Fase 2, Etapa 2 — subusuários (visualização compartilhada) (spec ainda não escrita)

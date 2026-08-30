@@ -1,11 +1,11 @@
 # Requisitos — Cartão de Crédito e Faturas
 
 ## Contexto
-Depende da Fase 1 (Autenticação), Fase 2 (Contas e Cartões — `Card.closing_day`/`due_day`/
-`linked_account_id`) e Fase 3 (Lançamentos Manuais — `Transaction`, parcelamento simples no
-cartão sem noção de ciclo de fatura). Esta fase agrupa os lançamentos de cartão em faturas
-mensais reais, com fechamento, vencimento e pagamento — o que a Fase 3 explicitamente deixou
-de fora (ver `specs/03-lancamentos-manuais/design.md`, RF-02).
+Depende da Etapa 1 (Autenticação), Etapa 2 (Contas e Cartões — `Card.closing_day`/`due_day`/
+`linked_account_id`) e Etapa 3 (Lançamentos Manuais — `Transaction`, parcelamento simples no
+cartão sem noção de ciclo de fatura). Esta etapa agrupa os lançamentos de cartão em faturas
+mensais reais, com fechamento, vencimento e pagamento — o que a Etapa 3 explicitamente deixou
+de fora (ver `specs/fase-1/etapa-03-lancamentos-manuais/design.md`, RF-02).
 
 ## Requisitos funcionais
 
@@ -17,7 +17,7 @@ com data de fechamento, vencimento e status.
     fatura
   - A fatura é criada sob demanda: só passa a existir quando o primeiro lançamento cujo
     período ela cobre é registrado (incluindo parcelas futuras de um parcelamento — RF-02 da
-    Fase 3 — que precisam de faturas futuras já existirem para receber essas parcelas)
+    Etapa 3 — que precisam de faturas futuras já existirem para receber essas parcelas)
   - Um lançamento com `date <= closing_date` da fatura entra nela; com `date` maior, entra na
     próxima (convenção usual de fatura de cartão no Brasil)
 
@@ -27,7 +27,7 @@ padrão o `closing_day`/`due_day` cadastrado no cartão, mas possa ser ajustada 
 quando necessário (ex.: o banco antecipou o fechamento por causa de feriado).
 - Critérios de aceite:
   - Ao criar uma fatura, `closing_date`/`due_date` são calculadas a partir do
-    `closing_day`/`due_day` do cartão (Fase 2)
+    `closing_day`/`due_day` do cartão (Etapa 2)
   - O usuário pode editar `closing_date`/`due_date` de uma fatura específica sem afetar outras
     faturas nem o `closing_day`/`due_day` cadastrado no cartão
 
@@ -46,7 +46,7 @@ Como usuário, quero ver se uma fatura está aberta, fechada, atrasada ou paga.
 ### RF-04 — Conta pagadora da fatura
 Como usuário, quero indicar de qual conta bancária uma fatura será paga.
 - Critérios de aceite:
-  - Cartão **com** `linked_account_id` (Fase 2): essa conta vem pré-selecionada como sugestão
+  - Cartão **com** `linked_account_id` (Etapa 2): essa conta vem pré-selecionada como sugestão
     de pagamento, mas pode ser trocada pontualmente só para aquela fatura, sem alterar o
     vínculo do cartão
   - Cartão **sem** `linked_account_id`: o usuário é obrigado a escolher manualmente a conta
@@ -61,7 +61,7 @@ Como usuário, quero registrar o pagamento de uma fatura, debitando o valor da c
     `fechada`/`atrasada`
   - Pagar a fatura cria automaticamente um lançamento de despesa (`Transaction`, sem
     `invoice_id`) na conta pagadora escolhida, refletindo a saída de dinheiro no saldo da conta
-    (Fase 3)
+    (Etapa 3)
 
 ### RF-06 — Lançamento retroativo em fatura já fechada
 Como usuário, quero poder registrar um lançamento esquecido cuja data cai numa fatura que já
@@ -92,8 +92,8 @@ detalhe de uma fatura específica com seus lançamentos.
 
 ## Fora de escopo desta feature
 - Pagamento parcial ou rotativo de fatura (juros, multa por atraso) — não solicitado
-- Crediário/financiamento fora do cartão — Fase 5 (já anotado em
-  `specs/03-lancamentos-manuais/requirements.md`)
+- Crediário/financiamento fora do cartão — Etapa 5 (já anotado em
+  `specs/fase-1/etapa-03-lancamentos-manuais/requirements.md`)
 - Central de notificações persistida (ex.: lembrete de vencimento) — o aviso do RF-06 é só
   confirmação pontual na hora da ação
 - Geração antecipada em lote de faturas futuras sem lançamento algum — faturas só nascem sob
@@ -105,9 +105,9 @@ detalhe de uma fatura específica com seus lançamentos.
 - Regra de fechamento: `transaction.date <= invoice.closing_date` entra na fatura atual
   (convenção usual de "melhor dia de compra" ser o dia seguinte ao fechamento)
 
-## Frontend desta fase (painel web)
-Construído junto com o backend desta fase. Todas as páginas exigem login (guarda de rota da
-Fase 1).
+## Frontend desta etapa (painel web)
+Construído junto com o backend desta etapa. Todas as páginas exigem login (guarda de rota da
+Etapa 1).
 - Tela de fatura (RF-08): lista de faturas do cartão (com status), detalhe de uma fatura com
   seus lançamentos e o total
 - Ação de editar data de fechamento/vencimento de uma fatura específica (RF-02)

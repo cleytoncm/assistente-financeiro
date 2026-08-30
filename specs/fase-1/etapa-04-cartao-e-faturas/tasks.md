@@ -1,6 +1,6 @@
 # Tasks — Cartão de Crédito e Faturas
 
-Status: não iniciado. Depende da Fase 1, Fase 2 e Fase 3 implementadas. Nenhuma task começa
+Status: não iniciado. Depende da Etapa 1, Etapa 2 e Etapa 3 implementadas. Nenhuma task começa
 antes de requirements.md e design.md serem confirmados pelo usuário.
 
 Política de testes (ver `constitution.md`, "Estratégia de Testes"): toda task de feature
@@ -48,8 +48,11 @@ abaixo já inclui o teste correspondente — nenhuma é considerada concluída s
       componente
       (requisito: RF-07)
 
-## Backlog de fases futuras (specs ainda não escritas)
-- 05-contas-a-pagar-receber — specs escritas em `specs/05-contas-a-pagar-receber/`
-- 06-importacao-arquivos
-- 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram)
-- 08-subusuarios (visualização compartilhada)
+## Backlog de fases/etapas futuras
+- Etapa 5 (Contas a pagar/receber) — specs escritas em
+  `specs/fase-1/etapa-05-contas-a-pagar-receber/`
+- Etapa 6 (Importação de arquivos) — specs escritas em
+  `specs/fase-1/etapa-06-importacao-arquivos/`
+- Fase 2, Etapa 1 — bot conversacional (sem fatia de painel web — interface própria via
+  Telegram) (spec ainda não escrita)
+- Fase 2, Etapa 2 — subusuários (visualização compartilhada) (spec ainda não escrita)

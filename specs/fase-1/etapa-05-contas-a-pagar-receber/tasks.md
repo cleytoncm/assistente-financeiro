@@ -1,6 +1,6 @@
 # Tasks — Contas a Pagar/Receber
 
-Status: não iniciado. Depende da Fase 1, Fase 2 e Fase 3 implementadas. Nenhuma task começa
+Status: não iniciado. Depende da Etapa 1, Etapa 2 e Etapa 3 implementadas. Nenhuma task começa
 antes de requirements.md e design.md serem confirmados pelo usuário.
 
 Política de testes (ver `constitution.md`, "Estratégia de Testes"): toda task de feature abaixo
@@ -78,12 +78,15 @@ já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
       extra quando já paga + teste de componente
       (requisito: RF-08, RF-09)
 - [ ] T23 — Exibição de `projected_balance` ao lado de `current_balance` nas telas de conta da
-      Fase 2/3 + teste de componente
+      Etapa 2/3 + teste de componente
       (requisito: RF-11)
 
-## Backlog de fases futuras (specs ainda não escritas)
-- 06-importacao-arquivos
-- 07-bot-conversacional (sem fatia de painel web — interface própria via Telegram; cobrir aqui
-  notificação/lembrete de vencimento de conta a pagar/receber, deixado de fora da Fase 5 — ver
-  `specs/05-contas-a-pagar-receber/requirements.md`, "Fora de escopo")
-- 08-subusuarios (visualização compartilhada)
+## Backlog de fases/etapas futuras
+- Etapa 6 (Importação de arquivos) — specs escritas em
+  `specs/fase-1/etapa-06-importacao-arquivos/`
+- Fase 2, Etapa 1 — bot conversacional (sem fatia de painel web — interface própria via
+  Telegram; cobrir aqui notificação/lembrete de vencimento de conta a pagar/receber, deixado de
+  fora desta etapa — ver
+  `specs/fase-1/etapa-05-contas-a-pagar-receber/requirements.md`, "Fora de escopo") (spec ainda
+  não escrita)
+- Fase 2, Etapa 2 — subusuários (visualização compartilhada) (spec ainda não escrita)

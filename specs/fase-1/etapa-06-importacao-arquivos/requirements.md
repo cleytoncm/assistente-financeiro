@@ -1,10 +1,10 @@
 # Requisitos — Importação de Arquivos
 
 ## Contexto
-Depende da Fase 1 (Autenticação), Fase 2 (`Account`, `Card`, `Bank`) e Fase 3 (`Transaction`,
-`Category`). Fatura de cartão (Fase 4) é usada indiretamente: um lançamento importado de PDF de
+Depende da Etapa 1 (Autenticação), Etapa 2 (`Account`, `Card`, `Bank`) e Etapa 3 (`Transaction`,
+`Category`). Fatura de cartão (Etapa 4) é usada indiretamente: um lançamento importado de PDF de
 fatura com `card_id` entra no mesmo fluxo de resolução de `invoice_id` já existente, sem lógica
-própria de fatura nesta fase. Não tem relação com a Fase 5 (`Payable`) — importação de arquivo
+própria de fatura nesta etapa. Não tem relação com a Etapa 5 (`Payable`) — importação de arquivo
 representa fatos já ocorridos (extrato passado), nunca uma obrigação futura agendada.
 
 Substitui a integração bancária automática (Open Finance/Pluggy), descartada desde a
@@ -68,7 +68,7 @@ sistema já viu uma descrição igual antes.
     acento) bate exatamente com a de uma `Transaction` já existente do usuário recebe a mesma
     `category_id` que foi usada da última vez, como sugestão
   - Sem correspondência exata, o lançamento fica sem categoria sugerida (`category_id` nulo) —
-    sem tentativa de correspondência aproximada/parcial nesta fase
+    sem tentativa de correspondência aproximada/parcial nesta etapa
 
 ### RF-06 — Revisão e confirmação
 Como usuário, quero revisar, editar e confirmar os lançamentos extraídos antes que virem
@@ -83,7 +83,7 @@ duplicata.
   - Uma linha pendente pode ser editada (data, descrição, valor, categoria) antes de ser aceita
   - Uma linha pendente pode ser descartada individualmente (usuário decide que não deve virar
     lançamento)
-  - Confirmar o lote cria uma `Transaction` (Fase 3) para cada linha pendente ainda não
+  - Confirmar o lote cria uma `Transaction` (Etapa 3) para cada linha pendente ainda não
     descartada, usando os valores (editados ou não) daquela linha
 
 ### RF-07 — Falha de processamento
@@ -113,11 +113,11 @@ acompanhar status ou retomar uma revisão pendente.
   erro de extração falha o lote inteiro (RF-07)
 - Suporte a todo e qualquer banco/emissor em PDF de fatura sem verificação prévia — a extração
   via agente (RF-03) não é garantida para qualquer layout, mas não há lista fechada de bancos
-  suportados nesta fase (diferente de uma abordagem por parser dedicado, que exigiria essa
+  suportados nesta etapa (diferente de uma abordagem por parser dedicado, que exigiria essa
   lista)
-- Importação de arquivo gerando conta a pagar/receber (Fase 5) — import só cria `Transaction`
+- Importação de arquivo gerando conta a pagar/receber (Etapa 5) — import só cria `Transaction`
 - Notificação de importação concluída fora da própria tela (e-mail, push) — reservado para
-  quando existir canal proativo (bot, Fase 7)
+  quando existir canal proativo (bot, Fase 2, Etapa 1)
 
 ## Decisões confirmadas
 - Toda linha extraída de um arquivo gera um registro de linha importada (`ImportedRow`),
@@ -130,9 +130,9 @@ acompanhar status ou retomar uma revisão pendente.
   throttla CPU do container após a resposta HTTP ser enviada, então processamento em segundo
   plano precisa de uma invocação própria (a fila dispara um endpoint interno de processamento)
 
-## Frontend desta fase (painel web)
-Construído junto com o backend desta fase. Todas as páginas exigem login (guarda de rota da
-Fase 1).
+## Frontend desta etapa (painel web)
+Construído junto com o backend desta etapa. Todas as páginas exigem login (guarda de rota da
+Etapa 1).
 - Tela de upload: escolha de formato, destino (conta ou cartão) e modo (staged/direct)
 - Indicador de progresso consultando o status do lote (RF-02) até sair de `processando`
 - Tela de revisão (RF-06): lista de linhas pendentes, editáveis, com indicação visual de

@@ -1,12 +1,12 @@
 # Requisitos — Contas a Pagar/Receber
 
 ## Contexto
-Depende da Fase 1 (Autenticação), Fase 2 (`Account`) e Fase 3 (`Transaction`, cálculo de saldo
-"até uma data"). Não depende da Fase 4 (Cartão e Faturas) — o motivador desta fase é justamente
+Depende da Etapa 1 (Autenticação), Etapa 2 (`Account`) e Etapa 3 (`Transaction`, cálculo de saldo
+"até uma data"). Não depende da Etapa 4 (Cartão e Faturas) — o motivador desta etapa é justamente
 o crediário/financiamento **fora** do cartão (compra parcelada direto com uma loja, empréstimo
-com terceiro, aluguel, assinatura), deixado de fora da Fase 3 (ver
-`specs/03-lancamentos-manuais/requirements.md`, "Fora de escopo") e da Fase 4 (ver
-`specs/04-cartao-e-faturas/requirements.md`, "Fora de escopo").
+com terceiro, aluguel, assinatura), deixado de fora da Etapa 3 (ver
+`specs/fase-1/etapa-03-lancamentos-manuais/requirements.md`, "Fora de escopo") e da Etapa 4 (ver
+`specs/fase-1/etapa-04-cartao-e-faturas/requirements.md`, "Fora de escopo").
 
 Uma conta a pagar/receber é uma obrigação futura (ainda não é um fato financeiro consumado) —
 diferente de `Transaction`, que representa dinheiro que já entrou ou saiu de uma conta. Uma
@@ -41,7 +41,7 @@ Como usuário, quero cadastrar uma obrigação recorrente sem data de término d
 aluguel, assinatura mensal).
 - Critérios de aceite:
   - Recorrência é sempre mensal (mesmo dia do mês, `due_day`); outras periodicidades (semanal,
-    trimestral etc.) ficam fora desta fase
+    trimestral etc.) ficam fora desta etapa
   - No cadastro, o sistema já materializa as primeiras 6 parcelas (6 meses) do grupo
   - Enquanto a recorrência não for encerrada (RF-10), o sistema estende o horizonte
     automaticamente: ao consultar as parcelas do usuário e encontrar uma recorrência cujo
@@ -58,7 +58,7 @@ cancelada, sem precisar de nenhuma ação para "atualizar" esse status.
   - `paga`: tem uma `Transaction` vinculada (RF-05), independente da data
   - `cancelada`: cancelada manualmente (RF-08), independente da data
   - Todas as transições por data são automáticas, calculadas na leitura, sem coluna de status
-    persistida (mesmo padrão da Fase 4 para fatura)
+    persistida (mesmo padrão da Etapa 4 para fatura)
 
 ### RF-05 — Registrar pagamento/recebimento de uma parcela
 Como usuário, quero marcar uma parcela como paga/recebida, informando a conta bancária e o
@@ -67,7 +67,7 @@ multa).
 - Critérios de aceite:
   - Ação exige `account_id` (mesmo que a parcela já tivesse um `account_id` sugerido, pode ser
     trocado neste momento) e aceita `paid_amount` opcional (default: igual a `amount` previsto)
-  - Cria automaticamente uma `Transaction` (Fase 3) na conta informada — `expense` para conta a
+  - Cria automaticamente uma `Transaction` (Etapa 3) na conta informada — `expense` para conta a
     pagar, `income` para conta a receber — com o `paid_amount` como valor
   - Vincula a `Transaction` criada à parcela (`paid_transaction_id`) e marca `paid_at`
   - Não permitido para parcela já paga ou já cancelada
@@ -130,7 +130,7 @@ até aquele dia, e ver esse impacto refletido no saldo projetado de cada conta b
 - Critérios de aceite:
   - Endpoint de listagem/resumo de parcelas aceita filtro por `due_date <= data escolhida` e por
     status
-  - O saldo projetado de uma conta (extensão da Fase 3, RF-10) passa a somar também parcelas não
+  - O saldo projetado de uma conta (extensão da Etapa 3, RF-10) passa a somar também parcelas não
     pagas/não canceladas com `account_id` daquela conta e `due_date <= data escolhida` —
     despesas subtraem, receitas somam
   - Parcelas sem `account_id` definido entram apenas no resumo geral (todas as contas), não na
@@ -149,7 +149,8 @@ as suas parcelas com status individual.
 - Cálculo de juros/amortização de financiamento (Price, SAC etc.) — usuário sempre informa o
   valor já definido de cada parcela (RF-02)
 - Recorrência com periodicidade diferente de mensal (semanal, quinzenal, trimestral, anual)
-- Notificação/lembrete de vencimento — fica para a Fase 7 (bot conversacional via Telegram),
+- Notificação/lembrete de vencimento — fica para a Fase 2, Etapa 1 (bot conversacional via
+  Telegram),
   quando o canal de aviso proativo existir
 - Pagamento parcial de uma parcela (ex.: pagar metade agora, metade depois) — `paid_amount`
   cobre diferença de valor (desconto/juros), mas a parcela vira "paga" por inteiro, não fica
@@ -169,9 +170,9 @@ as suas parcelas com status individual.
   degenerado de um grupo com uma única parcela, mas não materializa uma linha de grupo — a
   parcela avulsa carrega seus próprios `description`/`counterparty`/`account_id` diretamente
 
-## Frontend desta fase (painel web)
-Construído junto com o backend desta fase. Todas as páginas exigem login (guarda de rota da
-Fase 1).
+## Frontend desta etapa (painel web)
+Construído junto com o backend desta etapa. Todas as páginas exigem login (guarda de rota da
+Etapa 1).
 - Listagem de contas a pagar/receber (RF-12): filtro por tipo e status, com indicador de total
   previsto até uma data escolhida (RF-11)
 - Cadastro: avulsa (RF-01), parcelada (RF-02) ou recorrente (RF-03), com os campos de cada modo
