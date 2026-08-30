@@ -14,8 +14,40 @@ com suporte planejado a subusuários com visualização compartilhada.
 - Deploy na GCP (Cloud Run + Cloud SQL para PostgreSQL)
 
 ## Status
-Em planejamento — ainda não há código de implementação. O desenvolvimento é guiado por
-especificações (*spec-driven development*): veja `specs/00-overview/constitution.md` para a
-visão completa, decisões técnicas e o roadmap de fases e etapas (Fase 1 = MVP, Fase 2 =
-pós-MVP). Cada etapa tem seus próprios `requirements.md`, `design.md` e `tasks.md` em
+Em desenvolvimento, fase a fase. O desenvolvimento é guiado por especificações
+(*spec-driven development*): veja `specs/00-overview/constitution.md` para a visão completa,
+decisões técnicas e o roadmap de fases e etapas (Fase 1 = MVP, Fase 2 = pós-MVP). Cada etapa
+tem seus próprios `requirements.md`, `design.md` e `tasks.md` em
 `specs/fase-<N>/etapa-<NN>-<nome>/`.
+
+## Rodando localmente
+
+Pré-requisitos: Node.js 22+, Docker (com `docker compose`).
+
+```bash
+docker compose up -d          # Postgres de dev (5432) e de teste (5433)
+
+cd backend
+cp .env.example .env          # ajustar se necessário
+npm install
+npx prisma migrate deploy     # aplica as migrations no banco de dev
+npm run dev                   # http://localhost:3000
+
+# em outro terminal
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173
+```
+
+### Testes
+```bash
+cd backend && npm test          # testes de integração contra o Postgres de teste (porta 5433)
+cd frontend && npm test         # testes de componente (Vitest + Testing Library + MSW)
+cd frontend && npm run test:e2e # E2E (Playwright); sobe backend+frontend automaticamente
+```
+
+O Playwright precisa de bibliotecas do sistema para rodar o Chromium
+(`npx playwright install --with-deps chromium`, requer sudo). Se preferir não usar sudo, dá
+pra baixar os pacotes sem instalar (`apt-get download libnss3 libnspr4 libasound2t64`),
+extrair com `dpkg -x <pacote>.deb <pasta>` e apontar `LD_LIBRARY_PATH` pra
+`<pasta>/usr/lib/x86_64-linux-gnu` antes de rodar os testes E2E.

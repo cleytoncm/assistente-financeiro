@@ -1,0 +1,26 @@
+import { useEffect, useState } from 'react'
+import { meRequest, type PublicUser } from '../auth/authApi'
+import { useAuth } from '../auth/AuthContext'
+
+export function HomePage() {
+  const { logout } = useAuth()
+  const [user, setUser] = useState<PublicUser | null>(null)
+
+  useEffect(() => {
+    meRequest().then(setUser).catch(() => {})
+  }, [])
+
+  return (
+    <main>
+      <h1>Assistente Financeiro</h1>
+      {user && (
+        <p>
+          Olá, {user.name} ({user.email})
+        </p>
+      )}
+      <button type="button" onClick={logout}>
+        Sair
+      </button>
+    </main>
+  )
+}
