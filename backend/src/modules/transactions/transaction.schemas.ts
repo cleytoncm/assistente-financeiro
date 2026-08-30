@@ -15,6 +15,7 @@ export const createTransactionSchema = z
     cardId: z.string().trim().min(1).optional(),
     refundOfTransactionId: z.string().trim().min(1).optional(),
     installments: z.number().int().min(2).optional(),
+    confirmPaymentAdjustment: z.boolean().optional(),
   })
   .refine((data) => Boolean(data.accountId) !== Boolean(data.cardId), {
     message: 'Exactly one of accountId or cardId is required',
@@ -33,6 +34,7 @@ export const updateTransactionSchema = z.object({
   categoryId: z.string().trim().min(1).nullable().optional(),
   accountId: z.string().trim().min(1).optional(),
   cardId: z.string().trim().min(1).optional(),
+  confirmPaymentAdjustment: z.boolean().optional(),
 })
 
 export const listTransactionsQuerySchema = z.object({

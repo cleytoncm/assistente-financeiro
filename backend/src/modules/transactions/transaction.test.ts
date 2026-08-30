@@ -429,6 +429,8 @@ describe('PATCH /transactions/:id (RF-04)', () => {
 
   it('applies the change to remaining installments when applyToRemaining=true', async () => {
     const { token } = await createAuthenticatedUser(app)
+    // Far-future date so the resulting invoices stay 'aberta' regardless of which real day
+    // this test happens to run on (RF-07 blocks edits on non-open invoices).
     const cardId = await createCard(token)
     const created = await request(app)
       .post('/transactions')
@@ -436,7 +438,7 @@ describe('PATCH /transactions/:id (RF-04)', () => {
       .send({
         type: 'expense',
         amount: 300,
-        date: '2024-03-10',
+        date: '2099-03-10',
         description: 'Parcelado',
         cardId,
         installments: 3,
@@ -467,7 +469,7 @@ describe('PATCH /transactions/:id (RF-04)', () => {
       .send({
         type: 'expense',
         amount: 300,
-        date: '2024-03-10',
+        date: '2099-03-10',
         description: 'Parcelado',
         cardId,
         installments: 3,
@@ -629,7 +631,7 @@ describe('DELETE /transactions/:id (RF-05)', () => {
       .send({
         type: 'expense',
         amount: 300,
-        date: '2024-03-10',
+        date: '2099-03-10',
         description: 'Parcelado',
         cardId,
         installments: 3,

@@ -6,6 +6,7 @@ import { accountRouter } from './modules/accounts/account.routes.js'
 import { cardRouter } from './modules/cards/card.routes.js'
 import { categoryRouter } from './modules/categories/category.routes.js'
 import { transactionRouter } from './modules/transactions/transaction.routes.js'
+import { invoiceRouter } from './modules/invoices/invoice.routes.js'
 
 export function createApp(): Express {
   const app = express()
@@ -23,6 +24,7 @@ export function createApp(): Express {
   app.use('/cards', cardRouter)
   app.use('/categories', categoryRouter)
   app.use('/transactions', transactionRouter)
+  app.use('/invoices', invoiceRouter)
 
   return app
 }

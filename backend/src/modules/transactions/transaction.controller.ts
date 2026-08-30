@@ -21,6 +21,7 @@ import {
   RefundAmountExceedsOriginalError,
   TransactionNotFoundError,
 } from './transaction.errors.js'
+import { InvoiceNotOpenError, PaymentAdjustmentConfirmationRequiredError } from '../invoices/invoice.errors.js'
 
 function handleServiceError(error: unknown, res: Response): void {
   if (
@@ -37,8 +38,23 @@ function handleServiceError(error: unknown, res: Response): void {
     res.status(404).json({ error: error.message })
     return
   }
-  if (error instanceof DestinationInactiveError || error instanceof CategoryTypeMismatchError) {
+  if (
+    error instanceof DestinationInactiveError ||
+    error instanceof CategoryTypeMismatchError ||
+    error instanceof InvoiceNotOpenError
+  ) {
     res.status(409).json({ error: error.message })
+    return
+  }
+  if (error instanceof PaymentAdjustmentConfirmationRequiredError) {
+    res.status(409).json({
+      error: error.message,
+      invoicePaymentAdjustment: {
+        invoiceId: error.invoiceId,
+        oldAmount: error.oldAmount,
+        newAmount: error.newAmount,
+      },
+    })
     return
   }
   /* v8 ignore next -- defensive re-throw for unexpected errors, not triggerable in tests */

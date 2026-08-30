@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto'
-import type { Transaction, TransactionType } from '@prisma/client'
+import type { Invoice, Transaction, TransactionType } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { scopedToUser } from '../../lib/scopedToUser.js'
-import { parseDateOnly } from '../../lib/dateOnly.js'
+import { parseDateOnly, todayDateOnly } from '../../lib/dateOnly.js'
 import { splitInstallments } from './installmentSplit.js'
+import { computeInvoiceStatus } from '../invoices/invoiceStatus.js'
+import {
+  resolveInvoiceForDate,
+  computeInvoiceTotal,
+  syncPaymentTransactionAmount,
+} from '../invoices/invoice.service.js'
+import { PaymentAdjustmentConfirmationRequiredError } from '../invoices/invoice.errors.js'
 import {
   DestinationNotFoundError,
   DestinationInactiveError,
@@ -15,6 +22,7 @@ import {
   RefundAmountExceedsOriginalError,
   TransactionNotFoundError,
 } from './transaction.errors.js'
+import { InvoiceNotOpenError } from '../invoices/invoice.errors.js'
 
 type Destination = { accountId: string | null; cardId: string | null }
 
@@ -61,6 +69,29 @@ async function assertValidRefund(
   if (params.amount > Number(original.amount)) throw new RefundAmountExceedsOriginalError()
 }
 
+/**
+ * RF-06: creating/editing a Transaction that lands in an already-paid invoice is allowed, but
+ * requires confirmPaymentAdjustment=true — otherwise this throws with the old/new totals so the
+ * client can show a confirmation dialog before resending.
+ */
+async function assertInvoiceAcceptsTransaction(
+  invoice: Invoice,
+  type: TransactionType,
+  amount: number,
+  confirmPaymentAdjustment: boolean | undefined
+): Promise<void> {
+  const status = computeInvoiceStatus(invoice, todayDateOnly())
+  if (status !== 'paga' || confirmPaymentAdjustment) return
+
+  const oldAmount = await computeInvoiceTotal(invoice.id)
+  const newAmount = type === 'expense' ? oldAmount.plus(amount) : oldAmount.minus(amount)
+  throw new PaymentAdjustmentConfirmationRequiredError({
+    invoiceId: invoice.id,
+    oldAmount: oldAmount.toString(),
+    newAmount: newAmount.toString(),
+  })
+}
+
 export type CreateTransactionParams = {
   type: TransactionType
   amount: number
@@ -71,6 +102,7 @@ export type CreateTransactionParams = {
   cardId?: string
   refundOfTransactionId?: string
   installments?: number
+  confirmPaymentAdjustment?: boolean
 }
 
 export async function createTransaction(
@@ -102,8 +134,24 @@ export async function createTransaction(
     const parts = splitInstallments(params.amount, params.installments, date)
     const installmentGroupId = randomUUID()
 
-    return prisma.$transaction(
-      parts.map((part) =>
+    const invoiceIds: (string | null)[] = []
+    for (const part of parts) {
+      if (!destination.cardId) {
+        invoiceIds.push(null)
+        continue
+      }
+      const invoice = await resolveInvoiceForDate(userId, destination.cardId, part.date)
+      await assertInvoiceAcceptsTransaction(
+        invoice,
+        params.type,
+        Number(part.amount),
+        params.confirmPaymentAdjustment
+      )
+      invoiceIds.push(invoice.id)
+    }
+
+    const created = await prisma.$transaction(
+      parts.map((part, index) =>
         prisma.transaction.create({
           data: {
             userId,
@@ -114,6 +162,7 @@ export async function createTransaction(
             categoryId: params.categoryId ?? null,
             accountId: destination.accountId,
             cardId: destination.cardId,
+            invoiceId: invoiceIds[index],
             refundOfTransactionId: params.refundOfTransactionId ?? null,
             installmentGroupId,
             installmentNumber: part.installmentNumber,
@@ -122,6 +171,19 @@ export async function createTransaction(
         })
       )
     )
+
+    for (const invoiceId of new Set(invoiceIds.filter((id): id is string => id !== null))) {
+      await syncPaymentTransactionAmount(invoiceId)
+    }
+
+    return created
+  }
+
+  let invoiceId: string | null = null
+  if (destination.cardId) {
+    const invoice = await resolveInvoiceForDate(userId, destination.cardId, date)
+    await assertInvoiceAcceptsTransaction(invoice, params.type, params.amount, params.confirmPaymentAdjustment)
+    invoiceId = invoice.id
   }
 
   const transaction = await prisma.transaction.create({
@@ -134,9 +196,14 @@ export async function createTransaction(
       categoryId: params.categoryId ?? null,
       accountId: destination.accountId,
       cardId: destination.cardId,
+      invoiceId,
       refundOfTransactionId: params.refundOfTransactionId ?? null,
     },
   })
+
+  if (invoiceId) {
+    await syncPaymentTransactionAmount(invoiceId)
+  }
 
   return [transaction]
 }
@@ -145,6 +212,7 @@ export type ListTransactionsFilters = {
   accountId?: string
   cardId?: string
   categoryId?: string
+  invoiceId?: string
   from?: string
   to?: string
   limit?: number
@@ -162,6 +230,7 @@ export async function listTransactions(
     ...(filters.accountId ? { accountId: filters.accountId } : {}),
     ...(filters.cardId ? { cardId: filters.cardId } : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+    ...(filters.invoiceId ? { invoiceId: filters.invoiceId } : {}),
     ...(filters.from || filters.to
       ? {
           date: {
@@ -193,6 +262,15 @@ export async function getOwnedTransaction(userId: string, id: string): Promise<T
   return transaction
 }
 
+/** RF-07: editing/removing an existing Transaction is blocked once its invoice isn't open anymore. */
+async function assertExistingTransactionEditable(transaction: Transaction): Promise<void> {
+  if (!transaction.invoiceId) return
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: transaction.invoiceId } })
+  if (computeInvoiceStatus(invoice, todayDateOnly()) !== 'aberta') {
+    throw new InvoiceNotOpenError()
+  }
+}
+
 export type UpdateTransactionParams = {
   type?: TransactionType
   amount?: number
@@ -201,6 +279,7 @@ export type UpdateTransactionParams = {
   categoryId?: string | null
   accountId?: string
   cardId?: string
+  confirmPaymentAdjustment?: boolean
 }
 
 export async function updateTransaction(
@@ -210,6 +289,7 @@ export async function updateTransaction(
   applyToRemaining: boolean
 ): Promise<Transaction> {
   const existing = await getOwnedTransaction(userId, id)
+  await assertExistingTransactionEditable(existing)
 
   const destination: Destination | null =
     params.accountId !== undefined
@@ -227,6 +307,26 @@ export async function updateTransaction(
     await assertCategoryMatchesType(userId, params.categoryId, effectiveType)
   }
 
+  const effectiveCardId = destination ? destination.cardId : existing.cardId
+  const effectiveDate = params.date !== undefined ? parseDateOnly(params.date) : existing.date
+  const effectiveAmount = params.amount ?? Number(existing.amount)
+
+  let invoiceId: string | null
+  if (effectiveCardId) {
+    const invoice = await resolveInvoiceForDate(userId, effectiveCardId, effectiveDate)
+    if (invoice.id !== existing.invoiceId) {
+      await assertInvoiceAcceptsTransaction(
+        invoice,
+        effectiveType,
+        effectiveAmount,
+        params.confirmPaymentAdjustment
+      )
+    }
+    invoiceId = invoice.id
+  } else {
+    invoiceId = null
+  }
+
   const data = {
     ...(params.type !== undefined ? { type: params.type } : {}),
     ...(params.amount !== undefined ? { amount: params.amount } : {}),
@@ -234,6 +334,7 @@ export async function updateTransaction(
     ...(params.description !== undefined ? { description: params.description } : {}),
     ...(params.categoryId !== undefined ? { categoryId: params.categoryId } : {}),
     ...(destination ? { accountId: destination.accountId, cardId: destination.cardId } : {}),
+    ...(invoiceId !== existing.invoiceId ? { invoiceId } : {}),
   }
 
   const updated = await prisma.transaction.update({ where: { id }, data })
@@ -249,6 +350,10 @@ export async function updateTransaction(
     })
   }
 
+  for (const invId of new Set([existing.invoiceId, invoiceId].filter((v): v is string => v !== null))) {
+    await syncPaymentTransactionAmount(invId)
+  }
+
   return updated
 }
 
@@ -256,6 +361,7 @@ export type DeleteScope = 'single' | 'remaining'
 
 export async function deleteTransaction(userId: string, id: string, scope: DeleteScope): Promise<void> {
   const existing = await getOwnedTransaction(userId, id)
+  await assertExistingTransactionEditable(existing)
 
   if (scope === 'remaining' && existing.installmentGroupId) {
     await prisma.transaction.deleteMany({
