@@ -40,8 +40,9 @@ já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
       pendente/vence_hoje/atrasada, pagas/canceladas intocadas, `due_day` recalcula `due_date`
       mantendo o mês de cada parcela)
       (requisito: RF-07)
-- [ ] T12 — Endpoint POST /payables/:id/cancel + testes (motivo opcional, bloqueado se já paga
-      ou já cancelada)
+- [ ] T12 — Endpoint POST /payables/:id/cancel + testes (motivo opcional, bloqueado se já
+      cancelada, cancelamento de parcela paga exige `confirmDeleteTransaction` e remove a
+      `Transaction` vinculada em cascata)
       (requisito: RF-08)
 - [ ] T13 — Endpoint DELETE /payables/:id + testes (exclusão simples, exclusão de parcela paga
       exige `confirmDeleteTransaction`, cascata remove a `Transaction` vinculada)

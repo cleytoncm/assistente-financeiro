@@ -18,7 +18,7 @@ ImportBatch (lote de importação)
 
 ImportedRow (linha extraída de um lote)
   id, import_batch_id (FK ImportBatch),
-  date (DATE), description (TEXT), amount (DECIMAL(12,2)),
+  date (DATE), description (TEXT), amount (DECIMAL(12,2)), type (ENUM 'income'|'expense'),
   external_id (VARCHAR, NULLABLE),                    -- FITID, só para OFX
   is_duplicate_suspect (BOOLEAN, default false),
   duplicate_of_transaction_id (FK Transaction, NULLABLE),
@@ -43,6 +43,10 @@ Notas:
 - `raw_content` só existe fisicamente durante a janela entre o upload e o fim do processamento
   (sucesso ou falha) — o handler de processamento sempre grava `NULL` nesse campo ao terminar,
   independente do resultado.
+- `ImportedRow.amount` segue a mesma convenção de `Transaction.amount` (Etapa 3): sempre
+  positivo, com o sinal representado por `type`, nunca um valor negativo gravado. Cada extrator
+  (ver "Extração por formato") é responsável por converter a representação nativa do arquivo
+  (que pode trazer sinal, ex.: OFX) para esse formato antes de gravar a linha.
 
 ## Fluxo de upload e processamento (RF-01, RF-02)
 
@@ -74,15 +78,26 @@ POST /internal/import-batches/:id/process   (chamado só pelo Cloud Tasks)
 
 ## Extração por formato (RF-03)
 
-- **OFX**: parser determinístico (biblioteca de parsing OFX) sobre `raw_content` — retorna lista
-  de `{ date, description, amount, external_id }` (FITID vira `external_id`)
+Todo extrator produz o mesmo formato de saída por linha: `{ date, description, amount, type,
+external_id? }`, com `amount` sempre positivo e `type` (`income`/`expense`) carregando o sinal
+— igual à convenção de `Transaction` (Etapa 3).
+
+- **OFX**: parser determinístico (biblioteca de parsing OFX) sobre `raw_content`. O campo nativo
+  `TRNAMT` já vem assinado (negativo = débito/saída, positivo = crédito/entrada) — o extrator
+  converte `type = TRNAMT < 0 ? 'expense' : 'income'` e `amount = abs(TRNAMT)`. FITID vira
+  `external_id`.
 - **CSV**: `raw_content` (texto) enviado a um modelo Gemini (Vertex AI) com instrução de extrair
-  `{ date, description, amount }` por linha, em formato de saída estruturado (JSON Schema) —
-  sem `external_id` (CSV não carrega esse dado)
+  `{ date, description, amount, type }` por linha, em formato de saída estruturado (JSON
+  Schema), classificando cada linha como `income` ou `expense` a partir do sinal/coluna original
+  ou de termos como "crédito"/"débito" quando presentes — sem `external_id` (CSV não carrega
+  esse dado)
 - **PDF de fatura**: `raw_content` (bytes do PDF) enviado diretamente ao modelo Gemini (input
-  multimodal de documento), mesma instrução/schema de saída que o CSV, sem `external_id`
+  multimodal de documento), mesma instrução/schema de saída que o CSV (incluindo `type` —
+  fatura de cartão é majoritariamente `expense`, com `income` reservado a estornos/créditos
+  explícitos na fatura), sem `external_id`
 - Qualquer falha na chamada ao modelo (indisponibilidade, resposta fora do schema esperado) ou
-  qualquer linha com `date`/`amount` inválidos após a extração conta como falha do lote (RF-07)
+  qualquer linha com `date`/`amount`/`type` inválidos após a extração conta como falha do lote
+  (RF-07)
 
 ## Detecção de duplicata (RF-04)
 
@@ -91,7 +106,8 @@ function detectDuplicate(row, destination):   -- destination = { account_id } ou
   if row.external_id is not null:
     if exists Transaction with destination and external_id = row.external_id:
       return 'exact'
-  if exists Transaction with destination and date = row.date and amount = row.amount:
+  if exists Transaction with destination and date = row.date and amount = row.amount
+                         and type = row.type:
     return 'suspect'
   return 'none'
 ```
@@ -115,13 +131,14 @@ for each extracted row:
     continue
   category = suggestCategory(userId, row.description)
   importedRow = create ImportedRow {
-    ...row, suggested_category_id: category,
+    ...row,   -- inclui type já classificado pelo extrator (RF-03)
+    suggested_category_id: category,
     is_duplicate_suspect: dup == 'suspect',
     duplicate_of_transaction_id: dup == 'suspect' ? matched.id : null,
     resolution: 'pendente'
   }
   if batch.mode == 'direct' and dup == 'none':
-    transaction = create Transaction { account_id/card_id: destination, type: inferido do sinal,
+    transaction = create Transaction { account_id/card_id: destination, type: row.type,
                                         amount: row.amount, date: row.date,
                                         description: row.description, category_id: category,
                                         external_id: row.external_id, import_batch_id: batch.id }
@@ -138,15 +155,18 @@ GET    /import-batches/:id                      detalhe do lote
 GET    /import-batches/:id/rows                 lista de ImportedRow do lote (todas, com resolution)
 
 PATCH  /imported-rows/:id
-  body: { date?, description?, amount?, category_id? }
+  body: { date?, description?, amount?, type?, category_id? }
   -> só permitido se resolution = 'pendente'
+  -> type editável aqui é o que corrige uma classificação income/expense errada da extração
+     antes de confirmar (RF-06)
 
 POST   /imported-rows/:id/discard
   -> resolution = 'descartada'; só permitido se resolution = 'pendente'
 
 POST   /import-batches/:id/confirm
-  -> para cada ImportedRow do lote com resolution = 'pendente': cria Transaction com os valores
-     atuais da linha (editados ou não), marca resolution = 'aceita' e created_transaction_id
+  -> para cada ImportedRow do lote com resolution = 'pendente': cria Transaction com type=
+     ImportedRow.type e os demais valores atuais da linha (editados ou não), marca
+     resolution = 'aceita' e created_transaction_id
   -> marca ImportBatch.status = 'concluido'
   -> bloqueado se ImportBatch.status != 'aguardando_revisao'
 ```
@@ -161,7 +181,7 @@ Autenticação: todo endpoint exige `requireAuth` (Etapa 1); toda query de `Impo
 - Destino: exatamente um entre `account_id`/`card_id`, compatível com `format` (ver CHECK acima);
   deve pertencer ao usuário autenticado e estar `is_active = true`
 - `PATCH /imported-rows/:id` e `POST /imported-rows/:id/discard`: bloqueado se
-  `resolution != 'pendente'`
+  `resolution != 'pendente'`; `type`, se informado, deve ser `income` ou `expense`
 - `POST /import-batches/:id/confirm`: bloqueado se `ImportBatch.status != 'aguardando_revisao'`
 
 ## Decisões técnicas
@@ -172,7 +192,7 @@ Autenticação: todo endpoint exige `requireAuth` (Etapa 1); toda query de `Impo
   são pequenos (KBs a poucos MBs), e o conteúdo é efêmero (janela de processamento), então não
   compensa uma peça de infra de storage de objetos só para isso
 - Sem coluna de status persistida em `ImportedRow` além de `resolution` — diferente de
-  `Invoice`/`Payable` (Fases 4/5), aqui não há transições automáticas por data, só transições
+  `Invoice`/`Payable` (Etapas 4 e 5), aqui não há transições automáticas por data, só transições
   por ação do usuário ou do processamento, então uma coluna de estado direta é suficiente (não
   precisa de cálculo derivado)
 - Falha do lote inteiro (RF-07) é deliberadamente mais simples que processamento parcial —

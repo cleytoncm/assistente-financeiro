@@ -24,7 +24,7 @@ Como usuário cadastrado, quero entrar com e-mail e senha e receber um token de 
   - Login válido retorna um token que identifica o usuário nas próximas requisições
 
 ### RF-03 — Autenticação obrigatória nos demais endpoints
-Como sistema, todo endpoint de dados (contas, cartões, lançamentos, etc., das fases
+Como sistema, todo endpoint de dados (contas, cartões, lançamentos, etc., das etapas
 seguintes) exige um token válido no header `Authorization`.
 - Critérios de aceite:
   - Requisição sem token ou com token inválido/expirado retorna 401

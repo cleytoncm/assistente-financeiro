@@ -24,8 +24,8 @@ Card (cartão de crédito)
 
 Notas:
 - `linked_account_id` nulo representa cartão "sem vínculo" (RF-02). Nenhum outro campo muda
-  de comportamento — a ausência de vínculo só afeta o fluxo de pagamento de fatura (Etapa 3),
-  que exigirá escolher a conta pagadora manualmente lançamento a lançamento.
+  de comportamento — a ausência de vínculo só afeta o fluxo de pagamento de fatura (Etapa 4),
+  que exigirá escolher a conta pagadora manualmente a cada fatura.
 - `linked_account_id`, quando presente, é apenas a conta pagadora **padrão** sugerida para as
   faturas do cartão — a Etapa 4 (fatura) permite escolher outra conta pontualmente para uma
   fatura específica, sem precisar editar o vínculo do cartão.

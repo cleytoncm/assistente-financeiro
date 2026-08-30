@@ -33,7 +33,7 @@ abaixo já inclui o teste correspondente — nenhuma é considerada concluída s
       frontend: Vitest + React Testing Library + MSW, Playwright (E2E)
       (requisito: base para as tasks de frontend abaixo)
 - [ ] T10 — Client HTTP central (injeta Authorization, trata 401 globalmente) + teste
-      (requisito: base de frontend desta e das próximas fases)
+      (requisito: base de frontend desta e das próximas etapas)
 - [ ] T11 — Tela de cadastro (React) consumindo POST /auth/register + teste de componente
       (validação de campos, erro de e-mail duplicado) + E2E (cadastro completo)
       (requisito: RF-01)

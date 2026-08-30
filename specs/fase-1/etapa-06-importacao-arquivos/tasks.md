@@ -20,17 +20,19 @@ já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
       confirmação, enfileiramento do job)
       (requisito: RF-01, RF-02)
 - [ ] T06 — Extrator determinístico de OFX + testes unitários (lançamentos + `external_id`
-      extraídos corretamente, arquivo malformado rejeitado)
+      extraídos corretamente, `type`/`amount` derivados corretamente do sinal de `TRNAMT`,
+      arquivo malformado rejeitado)
       (requisito: RF-03)
 - [ ] T07 — Extrator via agente (Gemini/Vertex AI) para CSV + testes unitários (schema de saída
-      validado, falha da API tratada como erro do lote)
+      validado incluindo `type`, falha da API tratada como erro do lote)
       (requisito: RF-03)
 - [ ] T08 — Extrator via agente (Gemini/Vertex AI) para PDF de fatura + testes unitários (envio
-      do documento, schema de saída validado, falha tratada como erro do lote)
+      do documento, schema de saída validado incluindo `type`, falha tratada como erro do lote)
       (requisito: RF-03)
-- [ ] T09 — Detecção de duplicata (exata via `external_id`, suspeita via data+valor) + testes
-      unitários (duplicata exata nunca gera `ImportedRow`, suspeita sempre gera com o flag
-      correto e a referência à `Transaction` original)
+- [ ] T09 — Detecção de duplicata (exata via `external_id`, suspeita via data+valor+tipo) +
+      testes unitários (duplicata exata nunca gera `ImportedRow`, suspeita sempre gera com o
+      flag correto e a referência à `Transaction` original, mesma data/valor com tipo diferente
+      não é falso positivo)
       (requisito: RF-04)
 - [ ] T10 — Sugestão de categoria por descrição normalizada + testes unitários (match exato
       encontra a última categoria usada, sem match retorna nulo, sem falso positivo por
@@ -45,8 +47,8 @@ já inclui o teste correspondente — nenhuma é considerada concluída sem ele.
 - [ ] T12 — Endpoints GET /import-batches, GET /import-batches/:id, GET /import-batches/:id/rows
       + teste
       (requisito: RF-08)
-- [ ] T13 — Endpoint PATCH /imported-rows/:id + testes (edição válida, bloqueado se não
-      pendente)
+- [ ] T13 — Endpoint PATCH /imported-rows/:id + testes (edição válida incluindo correção de
+      `type`, bloqueado se não pendente)
       (requisito: RF-06)
 - [ ] T14 — Endpoint POST /imported-rows/:id/discard + testes (bloqueado se não pendente)
       (requisito: RF-06)

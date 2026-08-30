@@ -9,7 +9,7 @@ User
 
 `email` é sempre normalizado para lowercase antes de gravar ou consultar (registro e login).
 
-Nenhuma tabela de sessão no MVP (ver decisão de token abaixo). Todas as tabelas das fases
+Nenhuma tabela de sessão no MVP (ver decisão de token abaixo). Todas as tabelas das etapas
 seguintes (Account, Card, ...) mantêm `user_id (FK User)` como já previsto no design de
 Contas e Cartões — a diferença é que esse `user_id` agora vem do token autenticado, nunca do
 corpo da requisição.

@@ -32,7 +32,6 @@ Payable (parcela — avulsa quando group_id é nulo, ou pertencente a um Payable
   cancelled_at (DATETIME, NULLABLE),
   cancellation_reason (TEXT, NULLABLE),
   created_at
-  CHECK: group_id is null OR type = (SELECT type FROM PayableGroup WHERE id = group_id)
   CHECK: paid_transaction_id/paid_at são nulos ou preenchidos juntos
   CHECK: cancelled_at is not null OR cancellation_reason is null (motivo só existe se cancelada)
 ```
@@ -46,7 +45,9 @@ Notas:
 - `type` fica duplicado em `PayableGroup` e em cada `Payable` do grupo (denormalizado) para que
   toda leitura de `Payable` (ex.: listagem, cálculo de projeção) não precise de `JOIN` com
   `PayableGroup` — o valor nunca diverge entre grupo e parcela (garantido pela ausência de
-  endpoint que edite `type` depois de criado).
+  endpoint que edite `type` depois de criado). Essa consistência (`Payable.type` sempre igual ao
+  `PayableGroup.type` de origem) é validada na aplicação ao criar cada parcela, não como um
+  `CHECK` de banco (Postgres não permite `CHECK` com subquery em outra tabela).
 - `description`/`counterparty`/`account_id` também ficam em ambas as tabelas: ao criar as
   parcelas de um grupo (RF-02/RF-03), o valor do grupo é copiado para cada `Payable` gerada;
   editar o grupo (RF-07) sobrescreve essas colunas nas parcelas ainda não pagas/canceladas;
@@ -76,6 +77,13 @@ parcela informado pelo usuário, sem cálculo de juros).
 
 **Recorrente (`recurrence_type='recurring'`)**: cria o `PayableGroup` e um primeiro lote de 6
 parcelas mensais a partir de `start_date`/`due_day`. `installment_count` fica nulo (indefinida).
+`installment_number` continua incrementando sequencialmente através dos lotes gerados por
+extensão de horizonte (ver seção seguinte) — a parcela 7 (primeira do segundo lote) recebe
+`installment_number = 7`, e assim por diante, sem reiniciar a numeração a cada lote.
+
+`start_date` é um input só do momento da criação, usado para calcular o `due_date` da primeira
+parcela — não é uma coluna persistida em `PayableGroup` (a extensão de horizonte usa
+`MAX(due_date)` das parcelas existentes, não `start_date`, para continuar a cadência).
 
 ## Extensão de horizonte de recorrência (RF-03)
 
@@ -103,7 +111,9 @@ quiser). Grava `paid_transaction_id`, `paid_amount`, `paid_at` na `Payable`.
 ## Cancelamento e exclusão (RF-08, RF-09, RF-10)
 
 - **Cancelar parcela** (`POST /payables/:id/cancel`): grava `cancelled_at`/`cancellation_reason`.
-  Bloqueado se já `paga` (status) ou já `cancelada`.
+  Bloqueado se já `cancelada`. Se status = `paga`, exige `confirmDeleteTransaction: true` no
+  corpo (mesma trava e mesmos dados de aviso da exclusão abaixo) — com a confirmação, exclui a
+  `Transaction` vinculada e cancela a `Payable` numa única transação de banco.
 - **Excluir parcela** (`DELETE /payables/:id`): remove a linha. Se status = `paga`, exige
   `confirmDeleteTransaction: true` no corpo — sem isso, responde `409` com os dados da
   `Transaction` que seria removida (valor, data, conta); com a confirmação, exclui a `Payable` e
@@ -125,7 +135,12 @@ quiser). Grava `paid_transaction_id`, `paid_amount`, `paid_at` na `Payable`.
 - `PATCH /payable-groups/:id`: atualiza `amount`, `due_day`, `description`, `counterparty`,
   `account_id` no `PayableGroup` e faz `UPDATE` em cascata nas mesmas colunas de toda `Payable`
   do grupo com status em (`pendente`,`vence_hoje`,`atrasada`). Mudar `due_day` recalcula
-  `due_date` das parcelas afetadas mantendo o mês de cada uma, só trocando o dia.
+  `due_date` das parcelas afetadas mantendo o mês de cada uma, só trocando o dia. A cascata
+  sobrescreve incondicionalmente, inclusive parcelas que tiveram algum campo customizado
+  individualmente via `PATCH /payables/:id` (RF-06) — o grupo é sempre a fonte da verdade para
+  parcelas ainda não pagas/canceladas; uma customização pontual que precise sobreviver a uma
+  edição de grupo posterior deve ser reaplicada depois (sem flag de "não sobrescrever" nesta
+  etapa, para manter o modelo simples).
 
 ## Projeção de saldo (RF-11)
 
@@ -178,7 +193,9 @@ DELETE /payables/:id
   body: { confirmDeleteTransaction? }    -- obrigatório true se status='paga'
 
 POST   /payables/:id/cancel
-  body: { cancellation_reason? }         (RF-08)
+  body: { cancellation_reason?, confirmDeleteTransaction? }   (RF-08)
+  -- confirmDeleteTransaction obrigatório true se status='paga'; nesse caso também exclui a
+     Transaction vinculada
 
 POST   /payables/:id/pay
   body: { account_id, paid_amount?, date? }   (RF-05)
@@ -209,11 +226,13 @@ roda dentro do handler de `GET /payables` e `GET /payable-groups`, sempre restri
   omitido/nulo quando `recurrence_type = 'recurring'`
 - `POST /payables/:id/pay`: bloqueado se status já é `paga` ou `cancelada`; `account_id`
   obrigatório
-- `POST /payables/:id/cancel`: bloqueado se status já é `paga` ou `cancelada`
+- `POST /payables/:id/cancel`: bloqueado se status já é `cancelada`; se `paga`, exige
+  `confirmDeleteTransaction: true`
 - `PATCH /payables/:id`, `PATCH /payable-groups/:id`: bloqueado editar parcela/grupo cuja
   situação impede (ver seções acima)
-- `DELETE /payables/:id` e `DELETE /payable-groups/:id?scope=all`: exigem confirmação explícita
-  quando há `Transaction` vinculada a ser removida em cascata
+- `DELETE /payables/:id`, `POST /payables/:id/cancel` e
+  `DELETE /payable-groups/:id?scope=all`: exigem confirmação explícita quando há `Transaction`
+  vinculada a ser removida em cascata
 
 ## Decisões técnicas
 - `type` de `Payable`/`PayableGroup` reaproveita o enum `income`/`expense` de `Transaction` —

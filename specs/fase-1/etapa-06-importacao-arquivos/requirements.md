@@ -38,14 +38,18 @@ tela travar esperando, já que a extração (principalmente via agente, RF-03) p
 
 ### RF-03 — Extração de lançamentos do arquivo
 Como sistema, preciso extrair de cada arquivo uma lista de lançamentos candidatos (data,
-descrição, valor).
+descrição, valor, tipo receita/despesa).
 - Critérios de aceite:
+  - Todo lançamento extraído tem um tipo (`income`/`expense`, mesma convenção da Etapa 3) — o
+    valor extraído é sempre positivo, o sinal é carregado pelo tipo
   - **OFX**: extração determinística (formato já estruturado), preservando o identificador único
-    de cada lançamento do banco (`FITID`) — usado na detecção de duplicata exata (RF-04)
+    de cada lançamento do banco (`FITID`) — usado na detecção de duplicata exata (RF-04); o
+    tipo é derivado do sinal do valor nativo do arquivo
   - **CSV**: extração via agente (LLM), sem exigir que o usuário mapeie colunas manualmente —
-    cobre a variação de formato entre bancos sem parser dedicado por layout
+    cobre a variação de formato entre bancos sem parser dedicado por layout; o agente também
+    classifica cada linha como receita ou despesa
   - **PDF de fatura**: extração via agente (LLM) com suporte a documento (PDF enviado
-    diretamente ao modelo), sem parser dedicado por banco/emissor
+    diretamente ao modelo), sem parser dedicado por banco/emissor; mesma classificação de tipo
 
 ### RF-04 — Detecção de duplicata
 Como usuário, não quero que reimportar um arquivo (ou um período que já tenho lançado) crie
@@ -55,8 +59,9 @@ lançamentos repetidos.
     `Transaction` da mesma conta/cartão de destino é automaticamente descartado, sem nunca
     aparecer na revisão (RF-06), em nenhum dos dois modos
   - **Duplicata suspeita**: um lançamento sem `external_id` (CSV, PDF) cuja combinação de conta/
-    cartão de destino + data + valor já existe numa `Transaction` (manual ou de outro import) é
-    marcado como suspeito e **sempre** entra em revisão (RF-06), mesmo no modo `direct`
+    cartão de destino + data + valor + tipo já existe numa `Transaction` (manual ou de outro
+    import) é marcado como suspeito e **sempre** entra em revisão (RF-06), mesmo no modo
+    `direct`
   - Lançamento sem nenhuma suspeita de duplicata segue o comportamento normal do modo escolhido
     (RF-06)
 
@@ -80,7 +85,8 @@ duplicata.
   - No modo `staged`: toda linha começa pendente de revisão
   - No modo `direct`: linha sem suspeita de duplicata já é aceita e vira `Transaction`
     automaticamente; linha suspeita fica pendente de revisão (RF-04)
-  - Uma linha pendente pode ser editada (data, descrição, valor, categoria) antes de ser aceita
+  - Uma linha pendente pode ser editada (data, descrição, valor, tipo, categoria) antes de ser
+    aceita — editar o tipo corrige uma classificação receita/despesa errada da extração
   - Uma linha pendente pode ser descartada individualmente (usuário decide que não deve virar
     lançamento)
   - Confirmar o lote cria uma `Transaction` (Etapa 3) para cada linha pendente ainda não
