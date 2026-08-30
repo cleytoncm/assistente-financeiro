@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma.js'
 import { scopedToUser } from '../../lib/scopedToUser.js'
 import { todayDateOnly, parseDateOnly } from '../../lib/dateOnly.js'
 import { netAmount } from '../transactions/balanceMath.js'
+import { calculateProjectedAdjustment } from '../payables/payable.service.js'
 import {
   AccountHasTransactionsError,
   AccountNameAlreadyExistsError,
@@ -57,7 +58,7 @@ async function calculateBalance(account: Account, date: Date): Promise<Prisma.De
   return netAmount(account.initialBalance, incomeSum._sum.amount ?? 0, expenseSum._sum.amount ?? 0)
 }
 
-export type AccountWithBalance = Account & { currentBalance: string }
+export type AccountWithBalance = Account & { currentBalance: string; projectedBalance: string }
 
 export async function listAccounts(
   userId: string,
@@ -74,10 +75,15 @@ export async function listAccounts(
   )
 
   return Promise.all(
-    accounts.map(async (account) => ({
-      ...account,
-      currentBalance: (await calculateBalance(account, date)).toString(),
-    }))
+    accounts.map(async (account) => {
+      const currentBalance = await calculateBalance(account, date)
+      const projectedAdjustment = await calculateProjectedAdjustment(account.id, date)
+      return {
+        ...account,
+        currentBalance: currentBalance.toString(),
+        projectedBalance: currentBalance.plus(projectedAdjustment).toString(),
+      }
+    })
   )
 }
 

@@ -14,11 +14,13 @@ model User {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  accounts     Account[]
-  cards        Card[]
-  categories   Category[]
-  transactions Transaction[]
-  invoices     Invoice[]
+  accounts      Account[]
+  cards         Card[]
+  categories    Category[]
+  transactions  Transaction[]
+  invoices      Invoice[]
+  payableGroups PayableGroup[]
+  payables      Payable[]
 
   @@map("users")
 }
@@ -46,11 +48,13 @@ model Account {
   isHidden       Boolean  @default(false) @map("is_hidden")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  user         User          @relation(fields: [userId], references: [id])
-  bank         Bank          @relation(fields: [bankId], references: [id])
-  linkedCards  Card[]        @relation("CardLinkedAccount")
-  transactions Transaction[]
-  paidInvoices Invoice[]
+  user          User           @relation(fields: [userId], references: [id])
+  bank          Bank           @relation(fields: [bankId], references: [id])
+  linkedCards   Card[]         @relation("CardLinkedAccount")
+  transactions  Transaction[]
+  paidInvoices  Invoice[]
+  payableGroups PayableGroup[]
+  payables      Payable[]
 
   @@unique([userId, name])
   @@map("accounts")
@@ -148,6 +152,65 @@ model Transaction {
   invoicePayment Invoice?      @relation("InvoicePayment")
   refundOf       Transaction?  @relation("RefundOf", fields: [refundOfTransactionId], references: [id])
   refunds        Transaction[] @relation("RefundOf")
+  paidPayable    Payable?      @relation("PayablePayment")
 
   @@map("transactions")
+}
+
+enum PayableRecurrenceType {
+  installment
+  recurring
+}
+
+/// Conta a pagar/receber "grupo" (Etapa 5) — dados comuns de uma obrigação parcelada ou
+/// recorrente. Não existe para uma conta avulsa (RF-01): nesse caso a própria Payable carrega
+/// description/counterparty/accountId direto, com groupId nulo.
+model PayableGroup {
+  id               String                @id @default(uuid())
+  userId           String                @map("user_id")
+  type             TransactionType
+  recurrenceType   PayableRecurrenceType @map("recurrence_type")
+  installmentCount Int?                  @map("installment_count")
+  amount           Decimal               @db.Decimal(12, 2)
+  dueDay           Int                   @map("due_day")
+  description      String?
+  counterparty     String?
+  accountId        String?               @map("account_id")
+  createdAt        DateTime              @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  account  Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  payables Payable[]
+
+  @@map("payable_groups")
+}
+
+/// Parcela de conta a pagar/receber (Etapa 5) — obrigação futura, ainda não um fato financeiro
+/// consumado. Vira uma Transaction real só quando paga (paidTransactionId, RF-05). Sem coluna de
+/// status persistida: pendente/vence_hoje/atrasada/paga/cancelada é sempre derivado na leitura
+/// (mesmo padrão de Invoice na Etapa 4 — ver payableStatus.ts).
+model Payable {
+  id                 String    @id @default(uuid())
+  userId             String    @map("user_id")
+  groupId            String?   @map("group_id")
+  type               TransactionType
+  amount             Decimal   @db.Decimal(12, 2)
+  dueDate            DateTime  @map("due_date") @db.Date
+  installmentNumber  Int?      @map("installment_number")
+  description        String?
+  counterparty       String?
+  accountId          String?   @map("account_id")
+  paidAmount         Decimal?  @map("paid_amount") @db.Decimal(12, 2)
+  paidTransactionId  String?   @unique @map("paid_transaction_id")
+  paidAt             DateTime? @map("paid_at")
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  user            User          @relation(fields: [userId], references: [id])
+  group           PayableGroup? @relation(fields: [groupId], references: [id])
+  account         Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  paidTransaction Transaction?  @relation("PayablePayment", fields: [paidTransactionId], references: [id])
+
+  @@map("payables")
 }

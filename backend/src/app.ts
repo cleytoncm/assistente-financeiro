@@ -7,6 +7,8 @@ import { cardRouter } from './modules/cards/card.routes.js'
 import { categoryRouter } from './modules/categories/category.routes.js'
 import { transactionRouter } from './modules/transactions/transaction.routes.js'
 import { invoiceRouter } from './modules/invoices/invoice.routes.js'
+import { payableRouter } from './modules/payables/payable.routes.js'
+import { payableGroupRouter } from './modules/payables/payableGroup.routes.js'
 
 export function createApp(): Express {
   const app = express()
@@ -25,6 +27,8 @@ export function createApp(): Express {
   app.use('/categories', categoryRouter)
   app.use('/transactions', transactionRouter)
   app.use('/invoices', invoiceRouter)
+  app.use('/payables', payableRouter)
+  app.use('/payable-groups', payableGroupRouter)
 
   return app
 }
