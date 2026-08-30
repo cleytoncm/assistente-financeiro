@@ -9,6 +9,8 @@ type MockAccount = {
   bankId: string
   currency: string
   initialBalance: string
+  isActive: boolean
+  isHidden: boolean
   bank: MockBank
 }
 type MockCard = {
@@ -18,23 +20,62 @@ type MockCard = {
   closingDay: number
   dueDay: number
   linkedAccountId: string | null
+  isActive: boolean
+  isHidden: boolean
   linkedAccount: MockAccount | null
+}
+type MockCategory = { id: string; userId: string | null; name: string; type: 'income' | 'expense' }
+type MockTransaction = {
+  id: string
+  type: 'income' | 'expense'
+  amount: string
+  date: string
+  description: string
+  categoryId: string | null
+  accountId: string | null
+  cardId: string | null
+  refundOfTransactionId: string | null
+  installmentGroupId: string | null
+  installmentNumber: number | null
+  installmentCount: number | null
 }
 
 const DEFAULT_BANKS: MockBank[] = [{ id: 'seed-bank-1', name: 'Banco do Brasil', code: '001' }]
+const DEFAULT_CATEGORIES: MockCategory[] = [
+  { id: 'seed-cat-income-1', userId: null, name: 'Salário', type: 'income' },
+  { id: 'seed-cat-expense-1', userId: null, name: 'Alimentação', type: 'expense' },
+]
 
 let banks: MockBank[] = []
+let categories: MockCategory[] = []
 let accounts: MockAccount[] = []
 let cards: MockCard[] = []
+let transactions: MockTransaction[] = []
 let nextId = 1
 
 export function resetMockData() {
   banks = DEFAULT_BANKS.map((b) => ({ ...b }))
+  categories = DEFAULT_CATEGORIES.map((c) => ({ ...c }))
   accounts = []
   cards = []
+  transactions = []
   nextId = 1
 }
 resetMockData()
+
+function computeAccountBalance(account: MockAccount, date: string): string {
+  const sum = transactions
+    .filter((t) => t.accountId === account.id && t.date.slice(0, 10) <= date)
+    .reduce((acc, t) => acc + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0)
+  return (Number(account.initialBalance) + sum).toString()
+}
+
+function computeCardSpending(card: MockCard, date: string): { spending: string; available: string } {
+  const sum = transactions
+    .filter((t) => t.cardId === card.id && t.date.slice(0, 10) <= date)
+    .reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : -Number(t.amount)), 0)
+  return { spending: sum.toString(), available: (Number(card.creditLimit) - sum).toString() }
+}
 
 export const handlers = [
   http.post(`${BASE_URL}/auth/register`, async ({ request }) => {
@@ -73,7 +114,24 @@ export const handlers = [
     return HttpResponse.json(bank, { status: 201 })
   }),
 
-  http.get(`${BASE_URL}/accounts`, () => HttpResponse.json(accounts)),
+  http.get(`${BASE_URL}/categories`, () => HttpResponse.json(categories)),
+
+  http.post(`${BASE_URL}/categories`, async ({ request }) => {
+    const body = (await request.json()) as { name: string; type: 'income' | 'expense' }
+    const category: MockCategory = { id: `cat-${nextId++}`, userId: 'user-1', name: body.name, type: body.type }
+    categories.push(category)
+    return HttpResponse.json(category, { status: 201 })
+  }),
+
+  http.get(`${BASE_URL}/accounts`, ({ request }) => {
+    const url = new URL(request.url)
+    const date = url.searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
+    const includeHidden = url.searchParams.get('includeHidden') === 'true'
+    const visible = includeHidden ? accounts : accounts.filter((a) => !a.isHidden)
+    return HttpResponse.json(
+      visible.map((a) => ({ ...a, currentBalance: computeAccountBalance(a, date) }))
+    )
+  }),
 
   http.post(`${BASE_URL}/accounts`, async ({ request }) => {
     const body = (await request.json()) as {
@@ -89,18 +147,46 @@ export const handlers = [
       bankId: body.bankId,
       currency: body.currency ?? 'BRL',
       initialBalance: String(body.initialBalance),
+      isActive: true,
+      isHidden: false,
       bank,
     }
     accounts.push(account)
-    return HttpResponse.json(account, { status: 201 })
+    return HttpResponse.json({ ...account, currentBalance: account.initialBalance }, { status: 201 })
   }),
 
-  http.delete(`${BASE_URL}/accounts/:id`, ({ params }) => {
+  http.patch(`${BASE_URL}/accounts/:id/status`, async ({ request, params }) => {
+    const body = (await request.json()) as { isActive?: boolean; isHidden?: boolean }
+    const account = accounts.find((a) => a.id === params.id)!
+    if (body.isActive !== undefined) account.isActive = body.isActive
+    if (body.isHidden !== undefined) account.isHidden = body.isHidden
+    return HttpResponse.json(account)
+  }),
+
+  http.delete(`${BASE_URL}/accounts/:id`, ({ request, params }) => {
+    const url = new URL(request.url)
+    const cascade = url.searchParams.get('cascade') === 'true'
+    const hasTransactions = transactions.some((t) => t.accountId === params.id)
+    if (hasTransactions && !cascade) {
+      return HttpResponse.json({ error: 'Account has transactions' }, { status: 409 })
+    }
     accounts = accounts.filter((a) => a.id !== params.id)
+    transactions = transactions.filter((t) => t.accountId !== params.id)
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get(`${BASE_URL}/cards`, () => HttpResponse.json(cards)),
+  http.get(`${BASE_URL}/cards`, ({ request }) => {
+    const url = new URL(request.url)
+    const date = url.searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
+    const includeHidden = url.searchParams.get('includeHidden') === 'true'
+    const visible = includeHidden ? cards : cards.filter((c) => !c.isHidden)
+    return HttpResponse.json(
+      visible.map((c) => {
+        const { spending, available } = computeCardSpending(c, date)
+        return { ...c, currentSpending: spending, availableLimit: available }
+      })
+    )
+  }),
 
   http.post(`${BASE_URL}/cards`, async ({ request }) => {
     const body = (await request.json()) as {
@@ -120,14 +206,155 @@ export const handlers = [
       closingDay: body.closingDay,
       dueDay: body.dueDay,
       linkedAccountId: body.linkedAccountId ?? null,
+      isActive: true,
+      isHidden: false,
       linkedAccount,
     }
     cards.push(card)
-    return HttpResponse.json(card, { status: 201 })
+    return HttpResponse.json({ ...card, currentSpending: '0', availableLimit: card.creditLimit }, { status: 201 })
   }),
 
-  http.delete(`${BASE_URL}/cards/:id`, ({ params }) => {
+  http.patch(`${BASE_URL}/cards/:id/status`, async ({ request, params }) => {
+    const body = (await request.json()) as { isActive?: boolean; isHidden?: boolean }
+    const card = cards.find((c) => c.id === params.id)!
+    if (body.isActive !== undefined) card.isActive = body.isActive
+    if (body.isHidden !== undefined) card.isHidden = body.isHidden
+    return HttpResponse.json(card)
+  }),
+
+  http.delete(`${BASE_URL}/cards/:id`, ({ request, params }) => {
+    const url = new URL(request.url)
+    const cascade = url.searchParams.get('cascade') === 'true'
+    const hasTransactions = transactions.some((t) => t.cardId === params.id)
+    if (hasTransactions && !cascade) {
+      return HttpResponse.json({ error: 'Card has transactions' }, { status: 409 })
+    }
     cards = cards.filter((c) => c.id !== params.id)
+    transactions = transactions.filter((t) => t.cardId !== params.id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get(`${BASE_URL}/transactions`, ({ request }) => {
+    const url = new URL(request.url)
+    const accountId = url.searchParams.get('accountId')
+    const cardId = url.searchParams.get('cardId')
+    const categoryId = url.searchParams.get('categoryId')
+    const limit = Number(url.searchParams.get('limit') ?? '20')
+    const offset = Number(url.searchParams.get('offset') ?? '0')
+
+    let filtered = transactions
+    if (accountId) filtered = filtered.filter((t) => t.accountId === accountId)
+    if (cardId) filtered = filtered.filter((t) => t.cardId === cardId)
+    if (categoryId) filtered = filtered.filter((t) => t.categoryId === categoryId)
+
+    const sorted = [...filtered].sort((a, b) => (a.date < b.date ? 1 : -1))
+    return HttpResponse.json({
+      items: sorted.slice(offset, offset + limit),
+      total: sorted.length,
+    })
+  }),
+
+  http.post(`${BASE_URL}/transactions`, async ({ request }) => {
+    const body = (await request.json()) as {
+      type: 'income' | 'expense'
+      amount: number
+      date: string
+      description: string
+      categoryId?: string
+      accountId?: string
+      cardId?: string
+      refundOfTransactionId?: string
+      installments?: number
+    }
+
+    if (body.installments) {
+      const groupId = `group-${nextId++}`
+      const created: MockTransaction[] = []
+      const per = Math.floor((body.amount / body.installments) * 100) / 100
+      let sum = 0
+      for (let i = 0; i < body.installments; i++) {
+        const isLast = i === body.installments - 1
+        const amount = isLast ? body.amount - sum : per
+        sum += per
+        const date = new Date(body.date)
+        date.setMonth(date.getMonth() + i)
+        const transaction: MockTransaction = {
+          id: `txn-${nextId++}`,
+          type: body.type,
+          amount: amount.toFixed(2),
+          date: date.toISOString().slice(0, 10),
+          description: body.description,
+          categoryId: body.categoryId ?? null,
+          accountId: null,
+          cardId: body.cardId ?? null,
+          refundOfTransactionId: null,
+          installmentGroupId: groupId,
+          installmentNumber: i + 1,
+          installmentCount: body.installments,
+        }
+        transactions.push(transaction)
+        created.push(transaction)
+      }
+      return HttpResponse.json(created, { status: 201 })
+    }
+
+    const transaction: MockTransaction = {
+      id: `txn-${nextId++}`,
+      type: body.type,
+      amount: body.amount.toFixed(2),
+      date: body.date,
+      description: body.description,
+      categoryId: body.categoryId ?? null,
+      accountId: body.accountId ?? null,
+      cardId: body.cardId ?? null,
+      refundOfTransactionId: body.refundOfTransactionId ?? null,
+      installmentGroupId: null,
+      installmentNumber: null,
+      installmentCount: null,
+    }
+    transactions.push(transaction)
+    return HttpResponse.json(transaction, { status: 201 })
+  }),
+
+  http.patch(`${BASE_URL}/transactions/:id`, async ({ request, params }) => {
+    const url = new URL(request.url)
+    const applyToRemaining = url.searchParams.get('applyToRemaining') === 'true'
+    const body = (await request.json()) as Partial<MockTransaction>
+    const transaction = transactions.find((t) => t.id === params.id)!
+    const originalDate = transaction.date
+    Object.assign(transaction, body)
+
+    if (applyToRemaining && transaction.installmentGroupId) {
+      for (const sibling of transactions) {
+        if (
+          sibling.installmentGroupId === transaction.installmentGroupId &&
+          sibling.id !== transaction.id &&
+          sibling.date >= originalDate
+        ) {
+          Object.assign(sibling, body)
+        }
+      }
+    }
+
+    return HttpResponse.json(transaction)
+  }),
+
+  http.delete(`${BASE_URL}/transactions/:id`, ({ request, params }) => {
+    const url = new URL(request.url)
+    const scope = url.searchParams.get('scope') ?? 'single'
+    const transaction = transactions.find((t) => t.id === params.id)
+    if (!transaction) {
+      return HttpResponse.json({ error: 'Transaction not found' }, { status: 404 })
+    }
+
+    if (scope === 'remaining' && transaction.installmentGroupId) {
+      transactions = transactions.filter(
+        (t) => !(t.installmentGroupId === transaction.installmentGroupId && t.date >= transaction.date)
+      )
+    } else {
+      transactions = transactions.filter((t) => t.id !== params.id)
+    }
+
     return new HttpResponse(null, { status: 204 })
   }),
 ]

@@ -3,6 +3,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AccountsPage } from './AccountsPage'
+import { createTransaction } from '../transactions/transactionsApi'
+import { listAccounts } from '../accounts/accountsApi'
 
 function renderPage() {
   return render(
@@ -71,6 +73,54 @@ describe('AccountsPage', () => {
     await screen.findByRole('listitem')
 
     await user.click(screen.getByRole('button', { name: 'Remover' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Nenhuma conta cadastrada.')).toBeInTheDocument()
+    })
+  })
+
+  it('toggles isActive and isHidden on an account', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Nenhuma conta cadastrada.')).toBeInTheDocument())
+    await screen.findByRole('option', { name: 'Banco do Brasil' })
+    await user.type(screen.getByLabelText('Nome da conta'), 'Conta Toggle')
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+    await screen.findByRole('listitem')
+
+    await user.click(screen.getByRole('button', { name: 'Desativar' }))
+    expect(await screen.findByText(/inativa/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar' }))
+    expect(await screen.findByText(/oculta/)).toBeInTheDocument()
+  })
+
+  it('shows the 3-option removal dialog when the account has transactions', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Nenhuma conta cadastrada.')).toBeInTheDocument())
+    await screen.findByRole('option', { name: 'Banco do Brasil' })
+    await user.type(screen.getByLabelText('Nome da conta'), 'Conta Com Lancamento')
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+    await screen.findByRole('listitem')
+
+    const accounts = await listAccounts()
+    const account = accounts.find((a) => a.name === 'Conta Com Lancamento')!
+    await createTransaction({
+      type: 'expense',
+      amount: 10,
+      date: '2024-01-01',
+      description: 'X',
+      accountId: account.id,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Remover' }))
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Excluir em cascata/ }))
 
     await waitFor(() => {
       expect(screen.getByText('Nenhuma conta cadastrada.')).toBeInTheDocument()

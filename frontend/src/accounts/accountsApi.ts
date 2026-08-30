@@ -7,11 +7,18 @@ export type Account = {
   bankId: string
   currency: string
   initialBalance: string
+  isActive: boolean
+  isHidden: boolean
   bank?: Bank
+  currentBalance: string
 }
 
-export function listAccounts(): Promise<Account[]> {
-  return apiFetch<Account[]>('/accounts')
+export function listAccounts(options: { date?: string; includeHidden?: boolean } = {}): Promise<Account[]> {
+  const params = new URLSearchParams()
+  if (options.date) params.set('date', options.date)
+  if (options.includeHidden) params.set('includeHidden', 'true')
+  const query = params.toString()
+  return apiFetch<Account[]>(`/accounts${query ? `?${query}` : ''}`)
 }
 
 export function createAccount(data: {
@@ -30,6 +37,13 @@ export function updateAccount(
   return apiFetch<Account>(`/accounts/${id}`, { method: 'PATCH', body: data })
 }
 
-export function deleteAccount(id: string): Promise<void> {
-  return apiFetch<void>(`/accounts/${id}`, { method: 'DELETE' })
+export function updateAccountStatus(
+  id: string,
+  data: { isActive?: boolean; isHidden?: boolean }
+): Promise<Account> {
+  return apiFetch<Account>(`/accounts/${id}/status`, { method: 'PATCH', body: data })
+}
+
+export function deleteAccount(id: string, cascade = false): Promise<void> {
+  return apiFetch<void>(`/accounts/${id}${cascade ? '?cascade=true' : ''}`, { method: 'DELETE' })
 }

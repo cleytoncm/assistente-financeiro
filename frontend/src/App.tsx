@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { HomePage } from './pages/HomePage'
 import { AccountsPage } from './pages/AccountsPage'
+import { TransactionsPage } from './pages/TransactionsPage'
 
 export function App() {
   return (
@@ -26,6 +27,14 @@ export function App() {
             element={
               <RequireAuth>
                 <AccountsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/lancamentos"
+            element={
+              <RequireAuth>
+                <TransactionsPage />
               </RequireAuth>
             }
           />

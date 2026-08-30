@@ -22,6 +22,9 @@ export function HomePage() {
       <p>
         <Link to="/contas">Contas e Cartões</Link>
       </p>
+      <p>
+        <Link to="/lancamentos">Lançamentos</Link>
+      </p>
       <button type="button" onClick={logout}>
         Sair
       </button>
