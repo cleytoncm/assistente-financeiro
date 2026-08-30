@@ -45,6 +45,7 @@ describe('POST /cards', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.linkedAccountId).toBe(accountId)
+    expect(res.body.linkedAccount.id).toBe(accountId)
   })
 
   it('rejects linking to an account belonging to another user', async () => {

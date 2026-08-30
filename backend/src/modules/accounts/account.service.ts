@@ -25,6 +25,7 @@ export async function createAccount(
         currency: params.currency ?? 'BRL',
         initialBalance: params.initialBalance,
       },
+      include: { bank: true },
     })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -61,7 +62,7 @@ export async function updateAccount(
   }
 
   try {
-    return await prisma.account.update({ where: { id }, data: params })
+    return await prisma.account.update({ where: { id }, data: params, include: { bank: true } })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       throw new AccountNameAlreadyExistsError()

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { meRequest, type PublicUser } from '../auth/authApi'
 import { useAuth } from '../auth/AuthContext'
 
@@ -18,6 +19,9 @@ export function HomePage() {
           Olá, {user.name} ({user.email})
         </p>
       )}
+      <p>
+        <Link to="/contas">Contas e Cartões</Link>
+      </p>
       <button type="button" onClick={logout}>
         Sair
       </button>

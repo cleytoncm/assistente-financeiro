@@ -34,6 +34,7 @@ export async function createCard(
         dueDay: params.dueDay,
         linkedAccountId: params.linkedAccountId ?? null,
       },
+      include: { linkedAccount: true },
     })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -76,7 +77,7 @@ export async function updateCard(
   }
 
   try {
-    return await prisma.card.update({ where: { id }, data: params })
+    return await prisma.card.update({ where: { id }, data: params, include: { linkedAccount: true } })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       throw new CardNameAlreadyExistsError()

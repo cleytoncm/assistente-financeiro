@@ -4,6 +4,7 @@ import { RequireAuth } from './auth/RequireAuth'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { HomePage } from './pages/HomePage'
+import { AccountsPage } from './pages/AccountsPage'
 
 export function App() {
   return (
@@ -17,6 +18,14 @@ export function App() {
             element={
               <RequireAuth>
                 <HomePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/contas"
+            element={
+              <RequireAuth>
+                <AccountsPage />
               </RequireAuth>
             }
           />

@@ -24,6 +24,7 @@ describe('POST /accounts', () => {
 
     expect(res.status).toBe(201)
     expect(res.body).toMatchObject({ name: 'Conta Corrente', currency: 'BRL' })
+    expect(res.body.bank.code).toBe('001')
   })
 
   it('allows a negative initial balance', async () => {
@@ -144,6 +145,8 @@ describe('PATCH /accounts/:id', () => {
       .patch(`/accounts/${created.body.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Nome Novo' })
+
+    expect(res.body.bank.code).toBe('001')
 
     expect(res.status).toBe(200)
     expect(res.body.name).toBe('Nome Novo')
